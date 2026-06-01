@@ -180,7 +180,7 @@ const DAYS_FULL=["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"
 // ── GOOGLE HEALTH API CONFIG ───────────────────────────────────
 const GOOGLE_CLIENT_ID  = "143418453456-8nhj2c7gcrprqn6gd6lgmfj8mo9pst93.apps.googleusercontent.com";
 const GOOGLE_REDIRECT   = window.location.href.split("?")[0].split("#")[0];
-const GOOGLE_SCOPE      = "https://www.googleapis.com/auth/health.activity.read https://www.googleapis.com/auth/health.heart_rate.read";
+const GOOGLE_SCOPE      = "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly";
 const GOOGLE_AUTH_URL   = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL  = "https://oauth2.googleapis.com/token";
 const GOOGLE_API_BASE   = "https://health.googleapis.com/v4/users/me";
