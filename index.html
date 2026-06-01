@@ -163,6 +163,27 @@
     @keyframes toastIn{from{opacity:0;transform:translate(-50%,-8px);}to{opacity:1;transform:translate(-50%,0);}}
 
     .empty{text-align:center;padding:36px 20px;color:var(--muted2);font-size:13px;line-height:1.8;}
+
+    /* PROFILE MENU */
+    .profile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s ease;}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    .profile-sheet{width:100%;max-width:430px;background:var(--s1);border-radius:24px 24px 0 0;border-top:1px solid var(--border);padding:20px 20px calc(env(safe-area-inset-bottom,0px) + 24px);animation:slideUp .25s ease;}
+    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .profile-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px;}
+    .profile-name{font-family:'Cinzel Decorative',serif;font-size:16px;color:var(--acc);text-align:center;margin-bottom:4px;}
+    .profile-role{font-size:11px;letter-spacing:2px;color:var(--muted2);text-align:center;text-transform:uppercase;margin-bottom:20px;}
+    .profile-item{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;cursor:pointer;border:1px solid var(--border);background:var(--s2);margin-bottom:8px;}
+    .profile-item.red{border-color:rgba(248,113,113,.2);background:rgba(248,113,113,.04);}
+    .profile-item-icon{font-size:20px;width:24px;text-align:center;}
+    .profile-item-label{display:flex;flex-direction:column;gap:2px;}
+    .profile-item-title{font-size:14px;font-weight:600;}
+    .profile-item-sub{font-size:11px;color:var(--muted2);}
+    .profile-item.red .profile-item-title{color:var(--red);}
+    /* MODAL */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;display:flex;align-items:center;justify-content:center;padding:24px;}
+    .modal-card{background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:24px;width:100%;max-width:380px;}
+    .modal-title{font-family:'Cinzel Decorative',serif;font-size:14px;color:var(--acc);margin-bottom:16px;text-align:center;}
+    .modal-title.red{color:var(--red);}
     .divider{height:1px;background:var(--border);margin:4px 0;}
     .hidden{display:none;}
   </style>
@@ -220,6 +241,8 @@ let state={
   tab:"home",toast:null,toastTimer:null,
   wDur:"30",wHi:true,wNote:"",wScreenshot:null,
   fitbitToken:null,fitbitSyncing:false,fitbitLastSync:null,fitbitError:null,
+  showProfileMenu:false,showChangePw:false,showDeleteAccount:false,showDeleteSub:false,
+  newPw:"",newPw2:"",
   domSub:"",adjAmt:"",winDay:"0",winFrom:"06:00",winTo:"14:00",lMode:"sub",lName:"",lPass:""
 };
 
@@ -405,6 +428,15 @@ document.addEventListener("click",e=>{
   else if(a==="addworkout")addWorkout();
   else if(a==="clearshot")setState({wScreenshot:null});
   else if(a==="fitbit-login")fitbitLogin();
+  else if(a==="open-profile")setState({showProfileMenu:true});
+  else if(a==="close-profile")setState({showProfileMenu:false});
+  else if(a==="close-modal")setState({showChangePw:false,showDeleteAccount:false,showDeleteSub:false});
+  else if(a==="show-changepw")setState({showChangePw:true});
+  else if(a==="show-deleteaccount")setState({showDeleteAccount:true});
+  else if(a==="show-deletesub")setState({showDeleteSub:true});
+  else if(a==="changepw")changePassword();
+  else if(a==="deleteaccount")deleteAccount();
+  else if(a==="deletesub")deleteSub(v);
   else if(a==="fitbit-sync")syncFitbit();
   else if(a==="fitbit-disconnect")fitbitDisconnect();
   else if(a==="fitbit-save-id"){
@@ -431,7 +463,7 @@ document.addEventListener("click",e=>{
 document.addEventListener("input",e=>{
   const t=e.target,b=t.dataset.bind;
   if(!b)return;
-  const map={lname:"lName",lpass:"lPass",wdur:"wDur",wnote:"wNote",
+  const map={lname:"lName",lpass:"lPass",wdur:"wDur",wnote:"wNote",newpw:"newPw",newpw2:"newPw2",
              adjamt:"adjAmt",domsub:"domSub",winday:"winDay",
              winfrom:"winFrom",winto:"winTo"};
   if(map[b]){state[map[b]]=t.value;return;}
@@ -506,7 +538,7 @@ function buildApp(){
         <div class="dom-title">Trainer-Bereich</div>
         <div class="dom-sub">Dein persönlicher Coach 💪</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
-          <div class="pill"><div class="dot dot-dom"></div>${escHtml(me.name)}</div>
+          <div class="pill" data-action="open-profile" style="cursor:pointer"><div class="dot dot-dom"></div>${escHtml(me.name)}</div>
           <button class="icon-btn" data-action="logout">Abmelden</button>
         </div>
       </div>
@@ -517,7 +549,7 @@ function buildApp(){
         </div>
       </div>
       ${tab==="dom"?buildDomSubs(allSubs):buildDomSettings()}
-    </div>${toastHtml}</div>`;
+    </div>${toastHtml}${state.showProfileMenu||state.showChangePw||state.showDeleteAccount||state.showDeleteSub?buildProfileMenu():""}</div>`;
   }
 
   // SUB DASHBOARD
@@ -530,7 +562,7 @@ function buildApp(){
     <div class="hdr">
       <div class="hdr-title">FreedomFit</div>
       <div class="hdr-right">
-        <div class="pill"><div class="dot dot-sub"></div>${escHtml(me.name)}${sub.domLinked?`<span style="font-size:10px;color:var(--rose);margin-left:4px">🖤${escHtml(sub.domLinked)}</span>`:""}</div>
+        <div class="pill" data-action="open-profile" style="cursor:pointer"><div class="dot dot-sub"></div>${escHtml(me.name)}${sub.domLinked?`<span style="font-size:10px;color:var(--rose);margin-left:4px">🖤${escHtml(sub.domLinked)}</span>`:""}</div>
         <button class="icon-btn" data-action="logout">✕</button>
       </div>
     </div>
@@ -541,7 +573,7 @@ function buildApp(){
     <nav class="nav">
       ${[{id:"home",icon:"🏠",label:"Home"},{id:"train",icon:"🏋️",label:"Training"},{id:"redeem",icon:"🔓",label:"Einlösen"},{id:"history",icon:"📋",label:"Verlauf"}].map(n=>`<button class="nav-btn ${tab===n.id?"on":""}" data-action="tab" data-val="${n.id}"><span class="nav-icon">${n.icon}</span><span class="nav-lbl">${n.label}</span></button>`).join("")}
     </nav>
-  </div>${toastHtml}</div>`;
+  </div>${toastHtml}${state.showProfileMenu||state.showChangePw||state.showDeleteAccount||state.showDeleteSub?buildProfileMenu():""}</div>`;
 }
 
 function buildSubHome(pct,winActive,sub){
@@ -1030,6 +1062,131 @@ function buildFitbitSync(){
     <button class="btn btn-acc" data-action="fitbit-sync" ${fitbitSyncing?"disabled":""}>
       ${fitbitSyncing ? "⏳ Synchronisiere…" : "🔄 Jetzt synchronisieren"}
     </button>
+  </div>`;
+}
+
+// ── PROFILE MENU ────────────────────────────────────────────────
+function changePassword(){
+  const np = state.newPw.trim(), np2 = state.newPw2.trim();
+  if(!np || np.length < 4){ showToast("Mind. 4 Zeichen","danger"); return; }
+  if(np !== np2){ showToast("Passwörter stimmen nicht überein","danger"); return; }
+  const users = loadA("users",[]);
+  const idx = users.findIndex(u=>u.name===state.me.name);
+  if(idx === -1){ showToast("Fehler","danger"); return; }
+  users[idx].pass = np;
+  save("users", users);
+  setState({showChangePw:false, newPw:"", newPw2:"", showProfileMenu:false});
+  showToast("Passwort geändert ✓","ok");
+}
+
+function deleteAccount(){
+  const users = loadA("users",[]).filter(u=>u.name!==state.me.name);
+  save("users", users);
+  // delete sub data
+  localStorage.removeItem("ff3_sub_"+state.me.name);
+  localStorage.removeItem("ff3_dom_"+state.me.name);
+  logout();
+  showToast("Account gelöscht");
+}
+
+function deleteSub(subName){
+  if(!subName) return;
+  // Remove from dom linkedSubs
+  const nd = {...state.dom, linkedSubs: state.dom.linkedSubs.filter(s=>s!==subName)};
+  persistDom(nd);
+  // Remove sub data
+  localStorage.removeItem("ff3_sub_"+subName);
+  // Remove from users list
+  const users = loadA("users",[]).filter(u=>u.name!==subName);
+  save("users", users);
+  setState({showDeleteSub:false, showProfileMenu:false});
+  showToast(`${subName} gelöscht ✓`,"ok");
+}
+
+function buildProfileMenu(){
+  const {me, dom, showChangePw, showDeleteAccount, showDeleteSub, newPw, newPw2} = state;
+  const isDom = me.role === "dom";
+
+  // Change password modal
+  if(showChangePw){
+    return `<div class="modal-overlay" data-action="close-modal">
+      <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="modal-title">🔑 Passwort ändern</div>
+        <div class="field-wrap"><span class="label">Neues Passwort</span>
+          <input class="field" type="password" data-bind="newpw" value="${escHtml(newPw)}" placeholder="Mind. 4 Zeichen"/></div>
+        <div class="field-wrap"><span class="label">Wiederholen</span>
+          <input class="field" type="password" data-bind="newpw2" value="${escHtml(newPw2)}" placeholder="Passwort wiederholen"/></div>
+        <button class="btn btn-acc" style="margin-top:8px" data-action="changepw">Passwort speichern</button>
+        <button class="btn btn-ghost" style="margin-top:8px" data-action="close-modal">Abbrechen</button>
+      </div>
+    </div>`;
+  }
+
+  // Delete account modal
+  if(showDeleteAccount){
+    return `<div class="modal-overlay" data-action="close-modal">
+      <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="modal-title red">⚠️ Account löschen</div>
+        <div style="font-size:13px;color:var(--muted2);text-align:center;margin-bottom:16px;line-height:1.6">
+          Alle deine Daten werden unwiderruflich gelöscht.<br/>Bist du sicher?
+        </div>
+        <button class="btn btn-danger" data-action="deleteaccount">Ja, Account löschen</button>
+        <button class="btn btn-ghost" style="margin-top:8px" data-action="close-modal">Abbrechen</button>
+      </div>
+    </div>`;
+  }
+
+  // Delete sub modal
+  if(showDeleteSub){
+    return `<div class="modal-overlay" data-action="close-modal">
+      <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="modal-title red">⚠️ Sportler löschen</div>
+        <div style="font-size:13px;color:var(--muted2);text-align:center;margin-bottom:16px">
+          Welchen Sportler möchtest du löschen?
+        </div>
+        ${dom.linkedSubs.map(sn=>`
+          <button class="btn btn-danger" style="margin-bottom:8px" data-action="deletesub" data-val="${sn}">
+            ${escHtml(sn)} löschen
+          </button>`).join("")}
+        <button class="btn btn-ghost" style="margin-top:4px" data-action="close-modal">Abbrechen</button>
+      </div>
+    </div>`;
+  }
+
+  // Main profile sheet
+  return `<div class="profile-overlay" data-action="close-profile">
+    <div class="profile-sheet" onclick="event.stopPropagation()">
+      <div class="profile-handle"></div>
+      <div class="profile-name">${escHtml(me.name)}</div>
+      <div class="profile-role">${isDom ? "🖤 Trainer" : "💜 Sportler"}</div>
+
+      <div class="profile-item" data-action="show-changepw">
+        <div class="profile-item-icon">🔑</div>
+        <div class="profile-item-label">
+          <div class="profile-item-title">Passwort ändern</div>
+          <div class="profile-item-sub">Neues Passwort festlegen</div>
+        </div>
+      </div>
+
+      ${isDom && dom.linkedSubs.length > 0 ? `
+      <div class="profile-item" data-action="show-deletesub">
+        <div class="profile-item-icon">👤</div>
+        <div class="profile-item-label">
+          <div class="profile-item-title">Sportler löschen</div>
+          <div class="profile-item-sub">${dom.linkedSubs.join(", ")}</div>
+        </div>
+      </div>` : ""}
+
+      <div class="profile-item red" data-action="show-deleteaccount">
+        <div class="profile-item-icon">🗑️</div>
+        <div class="profile-item-label">
+          <div class="profile-item-title">Account löschen</div>
+          <div class="profile-item-sub">Alle Daten unwiderruflich löschen</div>
+        </div>
+      </div>
+
+      <button class="btn btn-ghost" style="margin-top:8px" data-action="close-profile">Schließen</button>
+    </div>
   </div>`;
 }
 
