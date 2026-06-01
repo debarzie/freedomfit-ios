@@ -864,28 +864,29 @@ async function syncFitbit(){
   if(!token){ setState({fitbitSyncing:false, fitbitError:"Nicht verbunden"}); return; }
 
   try {
-    // Google Health API v4 – fetch exercise sessions from last 7 days
     const now = new Date();
     const weekAgo = new Date(now - 7*24*60*60*1000);
+    // AIP-160 filter syntax for Google Health API v4
+    const filter = `exercise.interval.end_time >= "${weekAgo.toISOString()}" AND exercise.interval.end_time <= "${now.toISOString()}"`;
 
     const resp = await fetch(
       `${GOOGLE_API_BASE}/dataTypes/exercise/dataPoints?` + new URLSearchParams({
-        startTime: weekAgo.toISOString(),
-        endTime: now.toISOString(),
-        limit: "20"
+        filter: filter,
+        pageSize: "20"
       }),
-      { headers:{ Authorization:`Bearer ${token.access}` } }
+      { headers:{ Authorization:`Bearer ${token.access}`, Accept:"application/json" } }
     );
 
     if(!resp.ok){
-      const err = await resp.json();
-      console.error("Google Health API error:", err);
+      const errText = await resp.text();
+      console.error("Google Health API error:", resp.status, errText);
       setState({fitbitSyncing:false, fitbitError:`API Fehler: ${resp.status}`});
       showToast("Sync fehlgeschlagen – API Fehler","danger");
       return;
     }
 
     const data = await resp.json();
+    console.log("API response:", JSON.stringify(data).slice(0,500));
     const dataPoints = data.dataPoints || [];
 
     const existing = new Set(
@@ -894,28 +895,32 @@ async function syncFitbit(){
     const newWorkouts = [];
 
     for(const dp of dataPoints){
-      const dpId = dp.startTime + "_" + (dp.value?.activityType || "workout");
+      const dpId = dp.name || (dp.exercise?.interval?.startTime + "_exercise");
       if(existing.has(dpId)) continue;
 
-      const startMs = new Date(dp.startTime).getTime();
-      const endMs   = new Date(dp.endTime).getTime();
-      const durMins = (endMs - startMs) / 60000;
+      const startTime = dp.exercise?.interval?.startTime;
+      const endTime   = dp.exercise?.interval?.endTime;
+      const activeDur = dp.exercise?.activeDuration; // e.g. "900s"
+      if(!startTime || !endTime) continue;
+
+      const durMins = activeDur
+        ? parseInt(activeDur) / 60
+        : (new Date(endTime) - new Date(startTime)) / 60000;
+
       if(durMins < 5) continue;
 
-      // Fetch heart rate for this session
-      const avgHR = await fetchAvgHR(token.access, dp.startTime, dp.endTime);
-
+      const avgHR = await fetchAvgHR(token.access, startTime, endTime);
       const isHigh = avgHR > 132;
       const earned = isHigh
         ? Math.floor(durMins / HIGH_BPM_MINS) * HIGH_REWARD
         : Math.floor(durMins / LOW_BPM_MINS)  * LOW_REWARD;
 
-      const actName = dp.value?.activityType || "Training";
+      const actName = dp.exercise?.exerciseType || dp.exercise?.displayName || "Training";
 
       newWorkouts.push({
         id: Date.now() + Math.random(),
         fitbitId: dpId,
-        date: dp.startTime.slice(0,10),
+        date: startTime.slice(0,10),
         duration: Math.round(durMins),
         high: isHigh,
         earned: earned,
@@ -960,18 +965,20 @@ async function syncFitbit(){
 
 async function fetchAvgHR(accessToken, startTime, endTime){
   try {
+    // AIP-160 filter for heart-rate intraday data
+    const filter = `heart_rate.sample_time.physical_time >= "${startTime}" AND heart_rate.sample_time.physical_time <= "${endTime}"`;
     const resp = await fetch(
       `${GOOGLE_API_BASE}/dataTypes/heart-rate/dataPoints?` + new URLSearchParams({
-        startTime: startTime,
-        endTime:   endTime,
-        limit:     "1000"
+        filter: filter,
+        pageSize: "1000"
       }),
-      { headers:{ Authorization:`Bearer ${accessToken}` } }
+      { headers:{ Authorization:`Bearer ${accessToken}`, Accept:"application/json" } }
     );
+    if(!resp.ok) return 0;
     const data = await resp.json();
     const pts = data.dataPoints || [];
     if(pts.length === 0) return 0;
-    const sum = pts.reduce((s,p) => s + (p.value?.bpm || p.value?.beatsPerMinute || 0), 0);
+    const sum = pts.reduce((s,p) => s + (p.heartRate?.beatsPerMinute || p.heartRate?.bpm || 0), 0);
     return sum / pts.length;
   } catch(e){ return 0; }
 }
