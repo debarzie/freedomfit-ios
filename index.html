@@ -177,6 +177,14 @@ const BASE_MAX=5,STREAK_BONUS=2,MAX_CAP=15,MIN_TRAIN=10,MIN_EARN_SAVE=5;
 const DAYS_DE=["Mo","Di","Mi","Do","Fr","Sa","So"];
 const DAYS_FULL=["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 
+// ── GOOGLE HEALTH API CONFIG ───────────────────────────────────
+const GOOGLE_CLIENT_ID  = "143418453456-8nhj2c7gcrprqn6gd6lgmfj8mo9pst93.apps.googleusercontent.com";
+const GOOGLE_REDIRECT   = window.location.href.split("?")[0].split("#")[0];
+const GOOGLE_SCOPE      = "https://www.googleapis.com/auth/health.activity.read https://www.googleapis.com/auth/health.heart_rate.read";
+const GOOGLE_AUTH_URL   = "https://accounts.google.com/o/oauth2/v2/auth";
+const GOOGLE_TOKEN_URL  = "https://oauth2.googleapis.com/token";
+const GOOGLE_API_BASE   = "https://health.googleapis.com/v4/users/me";
+
 // ── UTILS ───────────────────────────────────────────────────────
 const todayISO=()=>new Date().toISOString().slice(0,10);
 const nowHHMM=()=>{const n=new Date();return n.getHours()*60+n.getMinutes();};
@@ -209,13 +217,47 @@ let state={
   sub:mkSub(),dom:mkDom(),
   tab:"home",toast:null,toastTimer:null,
   wDur:"30",wHi:true,wNote:"",wScreenshot:null,
+  fitbitToken:null,fitbitSyncing:false,fitbitLastSync:null,fitbitError:null,
   domSub:"",adjAmt:"",winDay:"0",winFrom:"06:00",winTo:"14:00",lMode:"sub",lName:"",lPass:""
 };
 
 // ── RENDER ──────────────────────────────────────────────────────
-function render(){document.getElementById("root").innerHTML=buildApp();}
+function render(){
+  // Save focused element and cursor position before re-render
+  const active = document.activeElement;
+  const activeId = active ? active.dataset.bind : null;
+  const selStart = active && active.selectionStart !== undefined ? active.selectionStart : null;
+  const selEnd = active && active.selectionEnd !== undefined ? active.selectionEnd : null;
 
-function setState(patch){Object.assign(state,patch);render();}
+  document.getElementById("root").innerHTML = buildApp();
+
+  // Restore focus and cursor after re-render
+  if(activeId){
+    const restored = document.querySelector("[data-bind='" + activeId + "']");
+    if(restored){
+      restored.focus();
+      if(selStart !== null && restored.setSelectionRange){
+        try{ restored.setSelectionRange(selStart, selEnd); }catch(e){}
+      }
+    }
+  }
+}
+
+function setState(patch){
+  // Before re-rendering, read current values from any live input fields
+  // so we don't lose what the user typed
+  const inputs = document.querySelectorAll("[data-bind]");
+  inputs.forEach(function(el){
+    const b = el.dataset.bind;
+    const map = {lname:"lName",lpass:"lPass",wdur:"wDur",wnote:"wNote",
+                 adjamt:"adjAmt",domsub:"domSub",winday:"winDay",
+                 winfrom:"winFrom",winto:"winTo"};
+    if(map[b] && el.tagName !== "INPUT" && el.type !== "file") return;
+    if(map[b]) state[map[b]] = el.value;
+  });
+  Object.assign(state, patch);
+  render();
+}
 
 function showToast(msg,type=""){
   clearTimeout(state.toastTimer);
@@ -360,6 +402,13 @@ document.addEventListener("click",e=>{
   else if(a==="whi")setState({wHi:v==="1"});
   else if(a==="addworkout")addWorkout();
   else if(a==="clearshot")setState({wScreenshot:null});
+  else if(a==="fitbit-login")fitbitLogin();
+  else if(a==="fitbit-sync")syncFitbit();
+  else if(a==="fitbit-disconnect")fitbitDisconnect();
+  else if(a==="fitbit-save-id"){
+    const inp=document.querySelector("[data-bind='fitbit-client-id']");
+    if(inp)saveFitbitClientId(inp.value);
+  }
   else if(a==="redeem")redeemNow(false);
   else if(a==="redeemwin")redeemNow(true);
   else if(a==="saveweek")saveWeek();
@@ -494,6 +543,15 @@ function buildApp(){
 }
 
 function buildSubHome(pct,winActive,sub){
+  // Auto-trigger sync check if fitbit connected and not synced today
+  if(state.fitbitToken && !state.fitbitSyncing){
+    const lastSync = state.fitbitLastSync;
+    const today = todayISO();
+    if(!lastSync || !lastSync.startsWith(today)){
+      setTimeout(()=>syncFitbit(), 500);
+    }
+  }
+
   return`<div class="sec">
     <div class="label" style="margin-bottom:10px">Deine Freiheit</div>
     <div class="meter-card">
@@ -522,7 +580,7 @@ function buildSubTrain(wDur,wHi,wNote,wScreenshot,sub){
   const reward=wDur&&parseFloat(wDur)>0?calcReward(parseFloat(wDur),wHi):null;
   return`<div class="sec">
     <div class="label" style="margin-bottom:10px">Training eintragen</div>
-    <div class="alert alert-acc" style="margin-bottom:14px"><div class="alert-icon">📸</div><div class="alert-body"><strong>Screenshot als Beweis erforderlich.</strong><br/>Foto vom Apple Watch Training hochladen. Dein Trainer kann alle Einträge prüfen.</div></div>
+    ${state.fitbitToken ? buildFitbitSync() : buildFitbitConnect()}
     <div class="wform">
       <div class="field-wrap"><span class="label">Dauer (Minuten)</span><input class="field" type="number" data-bind="wdur" value="${escHtml(wDur)}" placeholder="30"/></div>
       <div><span class="label" style="display:block;margin-bottom:6px">Intensität</span>
@@ -597,7 +655,8 @@ function buildSubHistory(sub){
             </div>
             <div class="wo-earned">+${fmtMin(w.earned)}</div>
           </div>
-          ${w.screenshot?`<img src="${w.screenshot}" class="wo-screenshot" alt="Beweis"/>` :""}
+          ${w.screenshot?`<img src="${w.screenshot}" class="wo-screenshot" alt="Beweis"/>` :
+            w.verified ? `<div style="font-size:11px;color:var(--green);margin-top:4px">✓ Google Health verifiziert · ⌚ ${w.avgHR||"?"} BPM avg</div>` : ""}
         </div>`).join("")}
   </div>`;
 }
@@ -681,10 +740,293 @@ function buildDomSettings(){
   </div>`;
 }
 
+// ── GOOGLE HEALTH OAUTH ─────────────────────────────────────────
+function fitbitLogin(){
+  // PKCE flow with Google OAuth
+  const verifier = generateVerifier();
+  sessionStorage.setItem("ff_pkce_verifier", verifier);
+  generateChallenge(verifier).then(challenge => {
+    const params = new URLSearchParams({
+      response_type:"code",
+      client_id:GOOGLE_CLIENT_ID,
+      redirect_uri:GOOGLE_REDIRECT,
+      scope:GOOGLE_SCOPE,
+      code_challenge:challenge,
+      code_challenge_method:"S256",
+      access_type:"offline",
+      prompt:"consent",
+      state:"google_health_auth"
+    });
+    window.location.href = GOOGLE_AUTH_URL + "?" + params.toString();
+  });
+}
+
+function generateVerifier(){
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
+}
+
+async function generateChallenge(verifier){
+  const data = new TextEncoder().encode(verifier);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
+}
+
+async function handleFitbitCallback(){
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  const authState = params.get("state");
+  if(!code || authState !== "google_health_auth") return;
+
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  const verifier = sessionStorage.getItem("ff_pkce_verifier");
+  if(!verifier){ showToast("Auth Fehler – bitte nochmal versuchen","danger"); return; }
+
+  try {
+    const resp = await fetch(GOOGLE_TOKEN_URL, {
+      method:"POST",
+      headers:{"Content-Type":"application/x-www-form-urlencoded"},
+      body: new URLSearchParams({
+        grant_type:"authorization_code",
+        client_id:GOOGLE_CLIENT_ID,
+        code:code,
+        redirect_uri:GOOGLE_REDIRECT,
+        code_verifier:verifier
+      })
+    });
+    const data = await resp.json();
+    if(data.access_token){
+      const token = {
+        access:data.access_token,
+        refresh:data.refresh_token,
+        expires: Date.now() + (data.expires_in * 1000)
+      };
+      save("fitbit_token", token);
+      setState({fitbitToken:token});
+      showToast("Google Health verbunden! Synchronisiere… 🎉","ok");
+      syncFitbit();
+    } else {
+      showToast("Auth fehlgeschlagen: " + (data.error || "Unbekannter Fehler"),"danger");
+      console.error(data);
+    }
+  } catch(e){
+    showToast("Verbindungsfehler","danger");
+    console.error(e);
+  }
+}
+
+async function refreshFitbitToken(){
+  const token = state.fitbitToken || load("fitbit_token",null);
+  if(!token?.refresh) return null;
+  try {
+    const resp = await fetch(GOOGLE_TOKEN_URL, {
+      method:"POST",
+      headers:{"Content-Type":"application/x-www-form-urlencoded"},
+      body: new URLSearchParams({
+        grant_type:"refresh_token",
+        client_id:GOOGLE_CLIENT_ID,
+        refresh_token:token.refresh
+      })
+    });
+    const data = await resp.json();
+    if(data.access_token){
+      const newToken = {
+        access:data.access_token,
+        refresh:token.refresh, // Google sometimes doesn't return new refresh token
+        expires:Date.now()+(data.expires_in*1000)
+      };
+      save("fitbit_token", newToken);
+      setState({fitbitToken:newToken});
+      return newToken;
+    }
+  } catch(e){ console.error("Token refresh failed",e); }
+  return null;
+}
+
+async function getValidToken(){
+  let token = state.fitbitToken || load("fitbit_token",null);
+  if(!token) return null;
+  if(Date.now() > token.expires - 60000){
+    token = await refreshFitbitToken();
+  }
+  return token;
+}
+
+async function syncFitbit(){
+  setState({fitbitSyncing:true, fitbitError:null});
+  const token = await getValidToken();
+  if(!token){ setState({fitbitSyncing:false, fitbitError:"Nicht verbunden"}); return; }
+
+  try {
+    // Google Health API v4 – fetch exercise sessions from last 7 days
+    const now = new Date();
+    const weekAgo = new Date(now - 7*24*60*60*1000);
+
+    const resp = await fetch(
+      `${GOOGLE_API_BASE}/dataTypes/exercise/dataPoints?` + new URLSearchParams({
+        startTime: weekAgo.toISOString(),
+        endTime: now.toISOString(),
+        limit: "20"
+      }),
+      { headers:{ Authorization:`Bearer ${token.access}` } }
+    );
+
+    if(!resp.ok){
+      const err = await resp.json();
+      console.error("Google Health API error:", err);
+      setState({fitbitSyncing:false, fitbitError:`API Fehler: ${resp.status}`});
+      showToast("Sync fehlgeschlagen – API Fehler","danger");
+      return;
+    }
+
+    const data = await resp.json();
+    const dataPoints = data.dataPoints || [];
+
+    const existing = new Set(
+      (state.sub.workouts||[]).filter(w=>w.fitbitId).map(w=>w.fitbitId)
+    );
+    const newWorkouts = [];
+
+    for(const dp of dataPoints){
+      const dpId = dp.startTime + "_" + (dp.value?.activityType || "workout");
+      if(existing.has(dpId)) continue;
+
+      const startMs = new Date(dp.startTime).getTime();
+      const endMs   = new Date(dp.endTime).getTime();
+      const durMins = (endMs - startMs) / 60000;
+      if(durMins < 5) continue;
+
+      // Fetch heart rate for this session
+      const avgHR = await fetchAvgHR(token.access, dp.startTime, dp.endTime);
+
+      const isHigh = avgHR > 132;
+      const earned = isHigh
+        ? Math.floor(durMins / HIGH_BPM_MINS) * HIGH_REWARD
+        : Math.floor(durMins / LOW_BPM_MINS)  * LOW_REWARD;
+
+      const actName = dp.value?.activityType || "Training";
+
+      newWorkouts.push({
+        id: Date.now() + Math.random(),
+        fitbitId: dpId,
+        date: dp.startTime.slice(0,10),
+        duration: Math.round(durMins),
+        high: isHigh,
+        earned: earned,
+        note: actName,
+        manual: false,
+        verified: true,
+        avgHR: Math.round(avgHR),
+        screenshot: null
+      });
+    }
+
+    if(newWorkouts.length > 0){
+      let s = {...state.sub};
+      for(const wo of newWorkouts){
+        s.workouts = [wo, ...s.workouts];
+        if(wo.duration >= MIN_TRAIN) s.missedDays = 0;
+        s.weekEarned = (s.weekEarned||0) + wo.earned;
+        s.freedomMins = Math.min((s.freedomMins||0) + wo.earned, s.weeklyMax);
+        if(wo.date === todayISO() && s.lastTrained !== todayISO()){
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate()-1);
+          const yStr = yesterday.toISOString().slice(0,10);
+          s.trainStreak = s.lastTrained===yStr ? (s.trainStreak||0)+1 : 1;
+          s.lastTrained = todayISO();
+          s.lastPenalty = todayISO();
+        }
+      }
+      persistSub(s);
+      showToast(`${newWorkouts.length} Training(s) synchronisiert! 💜`,"ok");
+    } else {
+      showToast("Alles aktuell ✓","ok");
+    }
+
+    setState({fitbitSyncing:false, fitbitLastSync:new Date().toISOString()});
+
+  } catch(e){
+    console.error("Sync error:", e);
+    setState({fitbitSyncing:false, fitbitError:"Sync fehlgeschlagen"});
+    showToast("Sync fehlgeschlagen","danger");
+  }
+}
+
+async function fetchAvgHR(accessToken, startTime, endTime){
+  try {
+    const resp = await fetch(
+      `${GOOGLE_API_BASE}/dataTypes/heart-rate/dataPoints?` + new URLSearchParams({
+        startTime: startTime,
+        endTime:   endTime,
+        limit:     "1000"
+      }),
+      { headers:{ Authorization:`Bearer ${accessToken}` } }
+    );
+    const data = await resp.json();
+    const pts = data.dataPoints || [];
+    if(pts.length === 0) return 0;
+    const sum = pts.reduce((s,p) => s + (p.value?.bpm || p.value?.beatsPerMinute || 0), 0);
+    return sum / pts.length;
+  } catch(e){ return 0; }
+}
+
+function fitbitDisconnect(){
+  save("fitbit_token", null);
+  setState({fitbitToken:null, fitbitLastSync:null});
+  showToast("Google Health getrennt");
+}
+
+function saveFitbitClientId(){
+  // Client ID ist jetzt fest eingebaut - nicht mehr nötig
+  showToast("Client ID ist bereits konfiguriert ✓","ok");
+}
+
+
+function buildFitbitConnect(){
+  return `<div class="card" style="margin-bottom:14px">
+    <div style="text-align:center;padding:8px 0 14px">
+      <div style="font-size:28px;margin-bottom:8px">⌚</div>
+      <div style="font-family:'Cinzel Decorative',serif;font-size:14px;color:var(--acc);margin-bottom:6px">Google Health verbinden</div>
+      <div style="font-size:12px;color:var(--muted2);line-height:1.7;margin-bottom:16px">
+        Verbinde dein Fitbit Air um Trainings automatisch zu synchronisieren.<br/>
+        <strong style="color:var(--text)">Kein Screenshot mehr nötig!</strong>
+      </div>
+      <button class="btn btn-acc" data-action="fitbit-login">Mit Google Health verbinden 🔗</button>
+    </div>
+  </div>
+  <div class="alert alert-acc" style="margin-bottom:14px"><div class="alert-icon">📸</div><div class="alert-body"><strong>Bis Google Health verbunden ist:</strong><br/>Screenshot als Beweis erforderlich. Danach entfällt das automatisch.</div></div>`;
+}
+
+function buildFitbitSync(){
+  const {fitbitSyncing, fitbitLastSync, fitbitError} = state;
+  const lastSync = fitbitLastSync ? new Date(fitbitLastSync).toLocaleString("de-DE",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "Noch nie";
+  return `<div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--green)">✓ Google Health verbunden</div>
+        <div style="font-size:11px;color:var(--muted2);margin-top:2px">Letzter Sync: ${lastSync}</div>
+        ${fitbitError ? `<div style="font-size:11px;color:var(--red);margin-top:2px">⚠️ ${fitbitError}</div>` : ""}
+      </div>
+      <button class="btn btn-danger btn-sm" data-action="fitbit-disconnect">Trennen</button>
+    </div>
+    <button class="btn btn-acc" data-action="fitbit-sync" ${fitbitSyncing?"disabled":""}>
+      ${fitbitSyncing ? "⏳ Synchronisiere…" : "🔄 Jetzt synchronisieren"}
+    </button>
+  </div>`;
+}
+
 function escHtml(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
 // ── INIT ────────────────────────────────────────────────────────
-render();
+// Load saved fitbit token
+const savedToken = load("fitbit_token", null);
+if(savedToken && savedToken.access) state.fitbitToken = savedToken;
+
+// Handle Fitbit OAuth callback
+handleFitbitCallback().then(()=>render());
+
 </script>
 </body>
 </html>
