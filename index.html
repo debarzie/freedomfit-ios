@@ -337,7 +337,7 @@ function addWorkout(){
   if(!dur||dur<1){showToast("Gültige Dauer eingeben","danger");return;}
   if(!state.wScreenshot){showToast("Bitte Screenshot anhängen","danger");return;}
   const reward=calcReward(dur,state.wHi);
-  const wo={id:Date.now(),date:todayISO(),duration:dur,high:state.wHi,earned:reward,note:state.wNote,manual:true,screenshot:state.wScreenshot};
+  const wo={id:String(Date.now()),date:todayISO(),duration:dur,high:state.wHi,earned:reward,note:state.wNote,manual:true,screenshot:state.wScreenshot};
   let s={...state.sub};
   s.workouts=[wo,...s.workouts];
   if(dur>=MIN_TRAIN)s.missedDays=0;
@@ -409,9 +409,15 @@ function domAddWindow(){
 function domRemoveWindow(id){persistDom({...state.dom,windows:state.dom.windows.filter(w=>w.id!==id)});}
 function domDeleteWorkout(subName,woId){
   const s=load(`sub_${subName}`,mkSub());
-  const removed=s.workouts.find(w=>w.id===woId);
-  save(`sub_${subName}`,{...s,workouts:s.workouts.filter(w=>w.id!==woId),freedomMins:Math.max(0,(s.freedomMins||0)-(removed?.earned||0))});
-  showToast("Training gelöscht","ok");render();
+  // Compare as strings AND numbers to handle float IDs
+  const removed=s.workouts.find(w=>String(w.id)===String(woId)||w.id===Number(woId));
+  if(!removed){ showToast("Training nicht gefunden","danger"); render(); return; }
+  const newWorkouts=s.workouts.filter(w=>String(w.id)!==String(woId)&&w.id!==Number(woId));
+  const newMins=Math.max(0,(s.freedomMins||0)-(removed.earned||0));
+  const newWeekEarned=Math.max(0,(s.weekEarned||0)-(removed.earned||0));
+  save(`sub_${subName}`,{...s,workouts:newWorkouts,freedomMins:newMins,weekEarned:newWeekEarned});
+  showToast("Training gelöscht ✓","ok");
+  render();
 }
 
 // ── EVENT DELEGATION ────────────────────────────────────────────
@@ -455,7 +461,7 @@ document.addEventListener("click",e=>{
   else if(a==="domtoggleday")domToggleRedeemDay(parseInt(v));
   else if(a==="domaddwin")domAddWindow();
   else if(a==="domremovewin")domRemoveWindow(parseInt(v));
-  else if(a==="domdelworkout"){const[sn,wid]=v.split("|");domDeleteWorkout(sn,parseInt(wid));}
+  else if(a==="domdelworkout"){const pipe=v.indexOf("|");const sn=v.slice(0,pipe);const wid=v.slice(pipe+1);domDeleteWorkout(sn,wid);}
   else if(a==="domtoggleapproval")persistDom({...state.dom,requireApproval:!state.dom.requireApproval});
 });
 
@@ -733,7 +739,7 @@ function buildDomSubs(allSubs){
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <div class="wo-earned">${fmtMin(w.earned)}</div>
-                  <button class="btn btn-danger btn-sm" data-action="domdelworkout" data-val="${sn}|${w.id}">✗ Löschen</button>
+                  <button class="btn btn-danger btn-sm" data-action="domdelworkout" data-val="${escHtml(sn+'|'+String(w.id))}">✗ Löschen</button>
                 </div>
               </div>
               ${w.screenshot?`<img src="${w.screenshot}" class="wo-screenshot" alt="Beweis"/>`:
@@ -952,7 +958,7 @@ async function syncFitbit(){
       const actName = dp.exercise?.exerciseType || dp.exercise?.displayName || "Training";
 
       newWorkouts.push({
-        id: Date.now() + Math.random(),
+        id: String(Date.now()) + "_" + String(Math.floor(Math.random()*10000)),
         fitbitId: dpId,
         date: startTime.slice(0,10),
         duration: Math.round(durMins),
