@@ -866,13 +866,15 @@ async function syncFitbit(){
   try {
     const now = new Date();
     const weekAgo = new Date(now - 7*24*60*60*1000);
-    // AIP-160 filter syntax for Google Health API v4
-    const filter = `exercise.interval.end_time >= "${weekAgo.toISOString()}" AND exercise.interval.end_time <= "${now.toISOString()}"`;
+    // AIP-160 filter: civil_start_time with YYYY-MM-DD format (no time, no Z)
+    const fromDate = weekAgo.toISOString().slice(0,10);
+    const toDate   = new Date(now.getTime() + 86400000).toISOString().slice(0,10);
+    const filter = `exercise.interval.civil_start_time >= "${fromDate}" AND exercise.interval.civil_start_time < "${toDate}"`;
 
     const resp = await fetch(
       `${GOOGLE_API_BASE}/dataTypes/exercise/dataPoints?` + new URLSearchParams({
         filter: filter,
-        pageSize: "20"
+        pageSize: "25"
       }),
       { headers:{ Authorization:`Bearer ${token.access}`, Accept:"application/json" } }
     );
@@ -966,7 +968,10 @@ async function syncFitbit(){
 async function fetchAvgHR(accessToken, startTime, endTime){
   try {
     // AIP-160 filter for heart-rate intraday data
-    const filter = `heart_rate.sample_time.physical_time >= "${startTime}" AND heart_rate.sample_time.physical_time <= "${endTime}"`;
+    // physical_time needs RFC-3339 format with Z
+    const st = startTime.endsWith("Z") ? startTime : startTime + "Z";
+    const et = endTime.endsWith("Z") ? endTime : endTime + "Z";
+    const filter = `heart_rate.sample_time.physical_time >= "${st}" AND heart_rate.sample_time.physical_time < "${et}"`;
     const resp = await fetch(
       `${GOOGLE_API_BASE}/dataTypes/heart-rate/dataPoints?` + new URLSearchParams({
         filter: filter,
