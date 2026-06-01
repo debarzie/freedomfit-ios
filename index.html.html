@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="FreedomFit"/>
+  <meta name="theme-color" content="#080810"/>
+  <title>FreedomFit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:#080810; --s1:#0f0f1a; --s2:#161625; --s3:#1e1e30;
+      --border:#252538; --acc:#a78bfa; --acc2:#7c3aed; --rose:#f472b6;
+      --gold:#fbbf24; --red:#f87171; --green:#34d399;
+      --text:#e2e8f0; --muted:#4e5270; --muted2:#6b7280;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;}
+    #root{height:100%;overflow:hidden;}
+
+    .app{max-width:430px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;}
+    .app::before{content:'';position:fixed;top:0;left:50%;transform:translateX(-50%);width:600px;height:400px;pointer-events:none;z-index:0;background:radial-gradient(ellipse at 40% 0%,rgba(167,139,250,.07) 0%,transparent 60%),radial-gradient(ellipse at 70% 100%,rgba(244,114,182,.04) 0%,transparent 60%);}
+
+    .page{position:relative;z-index:1;flex:1;overflow-y:auto;padding-bottom:90px;-webkit-overflow-scrolling:touch;}
+
+    .display{font-family:'Cinzel Decorative',serif;background:linear-gradient(135deg,var(--acc),var(--rose));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted2);}
+
+    /* HEADER */
+    .hdr{padding:env(safe-area-inset-top,20px) 20px 14px;padding-top:calc(env(safe-area-inset-top,0px) + 16px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg);position:sticky;top:0;z-index:10;}
+    .hdr-title{font-family:'Cinzel Decorative',serif;font-size:18px;color:var(--acc);}
+    .hdr-right{display:flex;align-items:center;gap:10px;}
+    .pill{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--muted2);}
+    .dot{width:7px;height:7px;border-radius:50%;}
+    .dot-sub{background:var(--green);box-shadow:0 0 6px var(--green);}
+    .dot-dom{background:var(--rose);box-shadow:0 0 6px var(--rose);}
+    .icon-btn{background:none;border:1px solid var(--border);border-radius:10px;padding:6px 10px;color:var(--muted2);cursor:pointer;font-size:12px;}
+
+    /* LOGIN */
+    .login-wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;gap:28px;}
+    .card{background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:24px;width:100%;}
+    .tabs{display:flex;background:var(--s2);border-radius:12px;padding:3px;gap:3px;margin-bottom:16px;}
+    .tab{flex:1;padding:10px;border:none;border-radius:9px;background:none;color:var(--muted2);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;}
+    .tab.on{background:var(--s1);color:var(--acc);box-shadow:0 0 10px rgba(167,139,250,.15);}
+    .tab.on.dom{color:var(--rose);}
+
+    .field-wrap{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+    input.field,select.field{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:13px 15px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;width:100%;-webkit-appearance:none;}
+    input.field:focus,select.field:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(167,139,250,.1);}
+
+    .btn{width:100%;padding:15px;border:none;border-radius:14px;font-family:'Cinzel Decorative',serif;font-size:12px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all .2s;margin-top:4px;}
+    .btn-acc{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;box-shadow:0 4px 18px rgba(124,58,237,.3);}
+    .btn-rose{background:linear-gradient(135deg,var(--rose),#e879f9);color:#fff;box-shadow:0 4px 18px rgba(244,114,182,.3);}
+    .btn-ghost{background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0;box-shadow:none;margin-top:0;}
+    .btn-danger{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:var(--red);font-family:'DM Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0;box-shadow:none;margin-top:0;}
+    .btn:disabled{opacity:.35;pointer-events:none;}
+    .btn-sm{padding:9px 14px;font-size:11px;border-radius:10px;width:auto;margin-top:0;}
+
+    /* SECTIONS */
+    .sec{padding:18px 20px;}
+    .sec+.sec{padding-top:0;}
+
+    /* METER */
+    .meter-card{background:var(--s1);border:1px solid var(--border);border-radius:22px;padding:26px 22px;text-align:center;position:relative;overflow:hidden;}
+    .meter-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acc),transparent);}
+    .meter-big{font-family:'Cinzel Decorative',serif;font-size:54px;line-height:1;background:linear-gradient(135deg,var(--gold),var(--acc));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .meter-sub{font-size:12px;color:var(--muted2);margin-top:4px;}
+    .bar-wrap{height:5px;background:var(--s3);border-radius:3px;margin:18px 0 8px;overflow:hidden;}
+    .bar-fill{height:100%;border-radius:3px;transition:width .6s ease;background:linear-gradient(90deg,var(--acc2),var(--acc),var(--rose));box-shadow:0 0 10px rgba(167,139,250,.4);}
+    .bar-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);}
+
+    /* STATS */
+    .stat-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+    .stat-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center;}
+    .stat-val{font-family:'Cinzel Decorative',serif;font-size:26px;color:var(--gold);}
+    .stat-lbl{font-size:10px;color:var(--muted2);letter-spacing:1.5px;margin-top:3px;}
+
+    /* ALERTS */
+    .alert{border-radius:14px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;}
+    .alert-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+    .alert-body{font-size:13px;line-height:1.6;}
+    .alert-warn{background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.22);color:var(--red);}
+    .alert-gold{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2);color:var(--gold);}
+    .alert-green{background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.2);color:var(--green);}
+    .alert-acc{background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2);color:var(--acc);}
+
+    /* WORKOUT FORM */
+    .wform{background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px;}
+    .intensity-row{display:flex;background:var(--s2);border-radius:10px;padding:3px;}
+    .int-btn{flex:1;padding:11px 8px;border:none;border-radius:8px;background:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted2);}
+    .int-btn.on-hi{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;}
+    .int-btn.on-lo{background:var(--s1);color:var(--text);}
+    .reward-preview{background:var(--s2);border-radius:10px;padding:11px 14px;text-align:center;font-size:13px;font-weight:600;color:var(--acc);}
+
+    /* SCREENSHOT */
+    .screenshot-upload{border:2px dashed var(--border);border-radius:14px;padding:20px;text-align:center;cursor:pointer;position:relative;overflow:hidden;}
+    .screenshot-upload.has-img{border-style:solid;border-color:var(--green);padding:0;}
+    .screenshot-upload input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+    .screenshot-preview{width:100%;border-radius:12px;display:block;max-height:200px;object-fit:cover;}
+    .screenshot-label{font-size:13px;color:var(--muted2);margin-top:6px;}
+    .screenshot-icon{font-size:28px;margin-bottom:6px;}
+    .screenshot-required{font-size:11px;color:var(--red);letter-spacing:1px;margin-top:4px;}
+
+    /* WORKOUT LIST */
+    .wo-item{background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+    .wo-item.expanded{flex-direction:column;align-items:stretch;}
+    .wo-item-top{display:flex;align-items:center;justify-content:space-between;width:100%;}
+    .wo-left{display:flex;flex-direction:column;gap:2px;}
+    .wo-date{font-size:11px;color:var(--muted2);}
+    .wo-name{font-size:14px;font-weight:600;}
+    .hi-chip{display:inline-block;font-size:10px;margin-left:6px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.25);color:var(--acc);border-radius:5px;padding:1px 6px;}
+    .wo-earned{font-size:13px;font-weight:700;color:var(--gold);}
+    .wo-screenshot{width:100%;border-radius:10px;margin-top:8px;object-fit:cover;max-height:160px;display:block;border:1px solid var(--border);}
+
+    /* REDEEM */
+    .redeem-card{background:linear-gradient(135deg,rgba(167,139,250,.07),rgba(244,114,182,.04));border:1px solid rgba(167,139,250,.18);border-radius:20px;padding:24px;text-align:center;display:flex;flex-direction:column;gap:14px;}
+    .redeem-big{font-family:'Cinzel Decorative',serif;font-size:42px;color:var(--gold);}
+    .days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+    .day-chip{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1px solid var(--border);background:var(--s2);color:var(--muted2);}
+    .day-chip.active{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.3);color:var(--green);}
+    .day-chip.today{border-color:var(--acc);color:var(--acc);background:rgba(167,139,250,.1);}
+
+    /* DOM */
+    .dom-hdr{background:linear-gradient(135deg,rgba(244,114,182,.08),rgba(232,121,249,.04));border-bottom:1px solid rgba(244,114,182,.18);padding:calc(env(safe-area-inset-top,0px) + 16px) 20px 16px;text-align:center;}
+    .dom-title{font-family:'Cinzel Decorative',serif;font-size:19px;color:var(--rose);}
+    .dom-sub{font-size:11px;letter-spacing:3px;color:var(--muted2);margin-top:4px;}
+    .dom-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+    .dom-stat{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center;}
+    .dom-stat-val{font-family:'Cinzel Decorative',serif;font-size:22px;color:var(--rose);}
+    .dom-stat-lbl{font-size:10px;color:var(--muted2);letter-spacing:1px;margin-top:3px;}
+
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:14px 15px;margin-bottom:8px;}
+    .toggle-label{font-size:13px;}
+    .toggle-switch{width:44px;height:24px;border-radius:12px;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;border:1px solid var(--border);}
+    .toggle-thumb{position:absolute;top:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;}
+
+    .window-row{background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:13px 15px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+    .window-info{font-size:13px;}
+    .window-time{font-size:11px;color:var(--muted2);margin-top:2px;}
+
+    .row{display:flex;gap:8px;align-items:flex-end;}
+    .row .field-wrap{flex:1;}
+
+    .wday-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+    .wday-btn{aspect-ratio:1;border-radius:9px;border:1px solid var(--border);background:var(--s2);color:var(--muted2);font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .wday-btn.on{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.35);color:var(--green);}
+
+    /* NAV */
+    .nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(8,8,16,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding:8px 0;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 8px);z-index:100;}
+    .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:7px 4px;}
+    .nav-icon{font-size:20px;}
+    .nav-lbl{font-size:10px;letter-spacing:.5px;color:var(--muted2);}
+    .nav-btn.on .nav-lbl{color:var(--acc);}
+    .nav-btn.on.dom .nav-lbl{color:var(--rose);}
+
+    /* TOAST */
+    .toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 18px);left:50%;transform:translateX(-50%);background:var(--s1);border:1px solid var(--acc);border-radius:13px;padding:13px 20px;font-size:13px;z-index:9999;white-space:nowrap;animation:toastIn .25s ease;box-shadow:0 0 18px rgba(167,139,250,.25);}
+    .toast.danger{border-color:var(--red);}
+    .toast.ok{border-color:var(--green);}
+    @keyframes toastIn{from{opacity:0;transform:translate(-50%,-8px);}to{opacity:1;transform:translate(-50%,0);}}
+
+    .empty{text-align:center;padding:36px 20px;color:var(--muted2);font-size:13px;line-height:1.8;}
+    .divider{height:1px;background:var(--border);margin:4px 0;}
+    .hidden{display:none;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────
+const HIGH_BPM_MINS=15,HIGH_REWARD=1,LOW_BPM_MINS=20,LOW_REWARD=0.25;
+const BASE_MAX=5,STREAK_BONUS=2,MAX_CAP=15,MIN_TRAIN=10,MIN_EARN_SAVE=5;
+const DAYS_DE=["Mo","Di","Mi","Do","Fr","Sa","So"];
+const DAYS_FULL=["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
+
+// ── GOOGLE HEALTH API CONFIG ───────────────────────────────────
+const GOOGLE_CLIENT_ID  = "143418453456-8nhj2c7gcrprqn6gd6lgmfj8mo9pst93.apps.googleusercontent.com";
+const GOOGLE_REDIRECT   = window.location.href.split("?")[0].split("#")[0];
+const GOOGLE_SCOPE      = "https://www.googleapis.com/auth/health.activity.read https://www.googleapis.com/auth/health.heart_rate.read";
+const GOOGLE_AUTH_URL   = "https://accounts.google.com/o/oauth2/v2/auth";
+const GOOGLE_TOKEN_URL  = "https://oauth2.googleapis.com/token";
+const GOOGLE_API_BASE   = "https://health.googleapis.com/v4/users/me";
+
+// ── UTILS ───────────────────────────────────────────────────────
+const todayISO=()=>new Date().toISOString().slice(0,10);
+const nowHHMM=()=>{const n=new Date();return n.getHours()*60+n.getMinutes();};
+const getISOWeek=(d=new Date())=>{const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));t.setUTCDate(t.getUTCDate()+4-(t.getUTCDay()||7));const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil((((t-y)/86400000)+1)/7);};
+const currentWeekKey=()=>{const n=new Date();return `${n.getFullYear()}-W${String(getISOWeek(n)).padStart(2,"0")}`;};
+const todayDayIndex=()=>{const d=new Date().getDay();return d===0?6:d-1;};
+const calcReward=(m,hi)=>hi?Math.floor(m/HIGH_BPM_MINS)*HIGH_REWARD:Math.floor(m/LOW_BPM_MINS)*LOW_REWARD;
+const fmtMin=(m)=>{if(m<=0)return"0m";if(m<1)return`${Math.round(m*60)}s`;const w=Math.floor(m),s=Math.round((m-w)*60);return s>0?`${w}m ${s}s`:`${w}m`;};
+const fmtDate=(iso)=>new Date(iso).toLocaleDateString("de-DE",{day:"2-digit",month:"short"});
+const hhmm2mins=(s)=>{const[h,m]=s.split(":").map(Number);return h*60+m;};
+
+// ── STORAGE ─────────────────────────────────────────────────────
+const SK="ff3_";
+const load=(k,fb={})=>{try{const r=localStorage.getItem(SK+k);return r?{...fb,...JSON.parse(r)}:fb;}catch{return fb;}};
+const save=(k,v)=>{try{localStorage.setItem(SK+k,JSON.stringify(v));}catch{}};
+const loadA=(k,fb=[])=>{try{const r=localStorage.getItem(SK+k);return r?JSON.parse(r):fb;}catch{return fb;}};
+
+// ── DEFAULT STATE ───────────────────────────────────────────────
+const mkSub=()=>({freedomMins:0,weeklyMax:BASE_MAX,savingStreak:0,trainStreak:0,missedDays:0,lastTrained:null,lastPenalty:null,weekStart:currentWeekKey(),savedThisWeek:false,weekEarned:0,savedWeekKey:null,pendingRedeem:null,domLinked:null,workouts:[],domLog:[]});
+const mkDom=()=>({requireApproval:false,redeemDays:[],windows:[],linkedSubs:[]});
+
+// ── BUSINESS LOGIC ──────────────────────────────────────────────
+const applyWeeklyReset=(sub)=>{const wk=currentWeekKey();if(sub.weekStart!==wk)return{...sub,weekStart:wk,weekEarned:0,savedThisWeek:false,savedWeekKey:null};return sub;};
+const applyPenalties=(sub)=>{const t=todayISO();if(!sub.lastPenalty||sub.lastPenalty===t)return sub;const diff=Math.round((new Date(t)-new Date(sub.lastPenalty))/86400000);if(diff<1)return sub;let s={...sub};for(let i=0;i<diff;i++){const cd=new Date(sub.lastPenalty);cd.setDate(cd.getDate()+i+1);const ds=cd.toISOString().slice(0,10);const had=s.workouts.some(w=>w.date===ds&&w.duration>=MIN_TRAIN);if(had){s.missedDays=0;continue;}s.missedDays=(s.missedDays||0)+1;if(s.missedDays===1)s.freedomMins*=(1-0.20);else if(s.missedDays===2)s.freedomMins*=(1-0.30);else if(s.missedDays===3)s.freedomMins*=(1-0.50);else if(s.missedDays>=4)s.freedomMins=0;s.freedomMins=Math.max(0,s.freedomMins);}s.lastPenalty=t;return s;};
+const activeWindow=(windows=[])=>{const day=todayDayIndex(),now=nowHHMM();return windows.find(w=>Number(w.day)===day&&hhmm2mins(w.from)<=now&&now<hhmm2mins(w.to))||null;};
+
+// ── APP STATE ───────────────────────────────────────────────────
+let state={
+  users:loadA("users",[]),me:null,
+  sub:mkSub(),dom:mkDom(),
+  tab:"home",toast:null,toastTimer:null,
+  wDur:"30",wHi:true,wNote:"",wScreenshot:null,
+  fitbitToken:null,fitbitSyncing:false,fitbitLastSync:null,fitbitError:null,
+  domSub:"",adjAmt:"",winDay:"0",winFrom:"06:00",winTo:"14:00",lMode:"sub",lName:"",lPass:""
+};
+
+// ── RENDER ──────────────────────────────────────────────────────
+function render(){
+  // Save focused element and cursor position before re-render
+  const active = document.activeElement;
+  const activeId = active ? active.dataset.bind : null;
+  const selStart = active && active.selectionStart !== undefined ? active.selectionStart : null;
+  const selEnd = active && active.selectionEnd !== undefined ? active.selectionEnd : null;
+
+  document.getElementById("root").innerHTML = buildApp();
+
+  // Restore focus and cursor after re-render
+  if(activeId){
+    const restored = document.querySelector("[data-bind='" + activeId + "']");
+    if(restored){
+      restored.focus();
+      if(selStart !== null && restored.setSelectionRange){
+        try{ restored.setSelectionRange(selStart, selEnd); }catch(e){}
+      }
+    }
+  }
+}
+
+function setState(patch){
+  // Before re-rendering, read current values from any live input fields
+  // so we don't lose what the user typed
+  const inputs = document.querySelectorAll("[data-bind]");
+  inputs.forEach(function(el){
+    const b = el.dataset.bind;
+    const map = {lname:"lName",lpass:"lPass",wdur:"wDur",wnote:"wNote",
+                 adjamt:"adjAmt",domsub:"domSub",winday:"winDay",
+                 winfrom:"winFrom",winto:"winTo"};
+    if(map[b] && el.tagName !== "INPUT" && el.type !== "file") return;
+    if(map[b]) state[map[b]] = el.value;
+  });
+  Object.assign(state, patch);
+  render();
+}
+
+function showToast(msg,type=""){
+  clearTimeout(state.toastTimer);
+  const timer=setTimeout(()=>setState({toast:null}),3000);
+  setState({toast:{msg,type},toastTimer:timer});
+}
+
+// ── AUTH ────────────────────────────────────────────────────────
+function doLogin(register){
+  const name=state.lName.trim().toLowerCase(),pass=state.lPass.trim();
+  if(!name||!pass){showToast("Name und Passwort eingeben","danger");return;}
+  const existing=state.users.find(u=>u.name===name);
+  if(register){
+    if(existing){showToast("Name bereits vergeben","danger");return;}
+    const nu={name,pass,role:state.lMode};
+    const newUsers=[...state.users,nu];
+    save("users",newUsers);
+    let sub=mkSub(),dom=mkDom();
+    setState({users:newUsers,me:{name,role:state.lMode},sub,dom,tab:"home"});
+    showToast(`Willkommen, ${name}! 💜`);
+  } else {
+    if(!existing||existing.pass!==pass){showToast("Ungültige Zugangsdaten","danger");return;}
+    if(existing.role!==state.lMode){showToast(`Account ist ein ${existing.role}-Account`,"danger");return;}
+    let sub=mkSub(),dom=mkDom();
+    if(existing.role==="sub"){let s=load(`sub_${name}`,mkSub());s=applyWeeklyReset(s);s=applyPenalties(s);save(`sub_${name}`,s);sub=s;}
+    else{dom=load(`dom_${name}`,mkDom());}
+    setState({me:{name,role:existing.role},sub,dom,tab:existing.role==="dom"?"dom":"home"});
+  }
+}
+
+function logout(){setState({me:null,sub:mkSub(),dom:mkDom(),tab:"home",lName:"",lPass:""});}
+
+// ── PERSIST ─────────────────────────────────────────────────────
+function persistSub(ns){save(`sub_${state.me.name}`,ns);setState({sub:ns});}
+function persistDom(nd){save(`dom_${state.me.name}`,nd);setState({dom:nd});}
+
+// ── DOM LINK ────────────────────────────────────────────────────
+function linkSubToDom(subName){
+  if(!subName)return;
+  const nd={...state.dom,linkedSubs:[...new Set([...state.dom.linkedSubs,subName])]};
+  persistDom(nd);
+  const ss=load(`sub_${subName}`,mkSub());
+  save(`sub_${subName}`,{...ss,domLinked:state.me.name});
+  showToast(`${subName} verknüpft ✓`,"ok");
+}
+const getLinkedSubState=(n)=>applyWeeklyReset(load(`sub_${n}`,mkSub()));
+const getLinkedDomState=()=>state.sub.domLinked?load(`dom_${state.sub.domLinked}`,mkDom()):null;
+
+// ── WORKOUT ─────────────────────────────────────────────────────
+function addWorkout(){
+  const dur=parseFloat(state.wDur);
+  if(!dur||dur<1){showToast("Gültige Dauer eingeben","danger");return;}
+  if(!state.wScreenshot){showToast("Bitte Screenshot anhängen","danger");return;}
+  const reward=calcReward(dur,state.wHi);
+  const wo={id:Date.now(),date:todayISO(),duration:dur,high:state.wHi,earned:reward,note:state.wNote,manual:true,screenshot:state.wScreenshot};
+  let s={...state.sub};
+  s.workouts=[wo,...s.workouts];
+  if(dur>=MIN_TRAIN)s.missedDays=0;
+  const yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);
+  const yStr=yesterday.toISOString().slice(0,10);
+  if(s.lastTrained!==todayISO()){s.trainStreak=s.lastTrained===yStr?(s.trainStreak||0)+1:1;s.lastTrained=todayISO();s.lastPenalty=todayISO();}
+  s.weekEarned=(s.weekEarned||0)+reward;
+  s.freedomMins=Math.min((s.freedomMins||0)+reward,s.weeklyMax);
+  persistSub(s);
+  showToast(`+${fmtMin(reward)} Freiheit verdient 💜`,"ok");
+  setState({wDur:"30",wNote:"",wScreenshot:null});
+}
+
+// ── REDEEM ──────────────────────────────────────────────────────
+function canRedeemDay(){const ld=getLinkedDomState();if(!ld||!ld.redeemDays||ld.redeemDays.length===0)return true;return ld.redeemDays.includes(todayDayIndex());}
+function redeemNow(fromWindow=false){
+  if(state.sub.freedomMins<=0){showToast("Keine Minuten vorhanden","danger");return;}
+  if(state.sub.savedThisWeek&&!fromWindow){showToast("Diese Woche gespart – kein Einlösen","danger");return;}
+  const ld=getLinkedDomState();
+  const needApproval=ld?.requireApproval&&!fromWindow;
+  if(needApproval){persistSub({...state.sub,pendingRedeem:{mins:state.sub.freedomMins,at:new Date().toISOString()}});showToast("Anfrage gesendet ⏳");}
+  else{const log={action:"Eingelöst",mins:state.sub.freedomMins,at:new Date().toISOString()};persistSub({...state.sub,freedomMins:0,savingStreak:0,weeklyMax:BASE_MAX,savedThisWeek:false,domLog:[log,...state.sub.domLog]});showToast(`${fmtMin(state.sub.freedomMins)} eingelöst! 🎉`,"ok");}
+}
+
+function saveWeek(){
+  if(state.sub.savedThisWeek){showToast("Bereits gespart diese Woche","danger");return;}
+  if((state.sub.weekEarned||0)<MIN_EARN_SAVE){showToast(`Mind. ${MIN_EARN_SAVE} Min verdienen`,"danger");return;}
+  if(state.sub.savedWeekKey===currentWeekKey()){showToast("Bereits gespart","danger");return;}
+  const ns=(state.sub.savingStreak||0)+1,nm=Math.min(BASE_MAX+ns*STREAK_BONUS,MAX_CAP);
+  persistSub({...state.sub,savingStreak:ns,weeklyMax:nm,savedThisWeek:true,savedWeekKey:currentWeekKey()});
+  showToast(`Streak +1! Max. ${nm}min 🔥`,"ok");
+}
+
+// ── DOM ACTIONS ─────────────────────────────────────────────────
+function domAdj(delta){
+  if(!state.domSub){showToast("Sportler wählen","danger");return;}
+  const s=load(`sub_${state.domSub}`,mkSub());
+  const newM=Math.max(0,Math.min((s.freedomMins||0)+delta,s.weeklyMax||BASE_MAX));
+  const log={action:delta>0?`+${fmtMin(Math.abs(delta))} hinzugefügt`:`−${fmtMin(Math.abs(delta))} abgezogen`,mins:newM,at:new Date().toISOString()};
+  save(`sub_${state.domSub}`,{...s,freedomMins:newM,domLog:[log,...(s.domLog||[])]});
+  showToast("Gespeichert","ok");setState({adjAmt:""});
+}
+function domReset(){
+  if(!state.domSub)return;
+  const s=load(`sub_${state.domSub}`,mkSub());
+  save(`sub_${state.domSub}`,{...s,freedomMins:0,domLog:[{action:"Reset auf 0",mins:0,at:new Date().toISOString()},...(s.domLog||[])]});
+  showToast("Auf 0 gesetzt","ok");render();
+}
+function domApprove(subName){
+  const s=load(`sub_${subName}`,mkSub());if(!s.pendingRedeem)return;
+  save(`sub_${subName}`,{...s,freedomMins:0,pendingRedeem:null,domLog:[{action:"Einlösung genehmigt",mins:s.pendingRedeem.mins,at:new Date().toISOString()},...(s.domLog||[])]});
+  showToast("Genehmigt ✓","ok");render();
+}
+function domDeny(subName){
+  const s=load(`sub_${subName}`,mkSub());
+  save(`sub_${subName}`,{...s,pendingRedeem:null,domLog:[{action:"Einlösung abgelehnt",mins:s.pendingRedeem?.mins,at:new Date().toISOString()},...(s.domLog||[])]});
+  showToast("Abgelehnt","danger");render();
+}
+function domToggleRedeemDay(i){
+  const days=state.dom.redeemDays.includes(i)?state.dom.redeemDays.filter(d=>d!==i):[...state.dom.redeemDays,i];
+  persistDom({...state.dom,redeemDays:days});
+}
+function domAddWindow(){
+  if(!state.winFrom||!state.winTo){showToast("Von/Bis eingeben","danger");return;}
+  const w={id:Date.now(),day:Number(state.winDay),from:state.winFrom,to:state.winTo};
+  persistDom({...state.dom,windows:[...state.dom.windows,w]});
+  showToast("Fenster hinzugefügt ✓","ok");
+}
+function domRemoveWindow(id){persistDom({...state.dom,windows:state.dom.windows.filter(w=>w.id!==id)});}
+function domDeleteWorkout(subName,woId){
+  const s=load(`sub_${subName}`,mkSub());
+  const removed=s.workouts.find(w=>w.id===woId);
+  save(`sub_${subName}`,{...s,workouts:s.workouts.filter(w=>w.id!==woId),freedomMins:Math.max(0,(s.freedomMins||0)-(removed?.earned||0))});
+  showToast("Training gelöscht","ok");render();
+}
+
+// ── EVENT DELEGATION ────────────────────────────────────────────
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-action]");
+  if(!t)return;
+  const a=t.dataset.action,v=t.dataset.val;
+  if(a==="tab")setState({tab:v});
+  else if(a==="lmode")setState({lMode:v});
+  else if(a==="login")doLogin(false);
+  else if(a==="register")doLogin(true);
+  else if(a==="logout")logout();
+  else if(a==="whi")setState({wHi:v==="1"});
+  else if(a==="addworkout")addWorkout();
+  else if(a==="clearshot")setState({wScreenshot:null});
+  else if(a==="fitbit-login")fitbitLogin();
+  else if(a==="fitbit-sync")syncFitbit();
+  else if(a==="fitbit-disconnect")fitbitDisconnect();
+  else if(a==="fitbit-save-id"){
+    const inp=document.querySelector("[data-bind='fitbit-client-id']");
+    if(inp)saveFitbitClientId(inp.value);
+  }
+  else if(a==="redeem")redeemNow(false);
+  else if(a==="redeemwin")redeemNow(true);
+  else if(a==="saveweek")saveWeek();
+  else if(a==="domadj-plus")domAdj(parseFloat(state.adjAmt)||0);
+  else if(a==="domadj-minus")domAdj(-(parseFloat(state.adjAmt)||0));
+  else if(a==="domreset")domReset();
+  else if(a==="domlink")linkSubToDom(state.domSub);
+  else if(a==="domapprove")domApprove(v);
+  else if(a==="domdeny")domDeny(v);
+  else if(a==="domtoggleday")domToggleRedeemDay(parseInt(v));
+  else if(a==="domaddwin")domAddWindow();
+  else if(a==="domremovewin")domRemoveWindow(parseInt(v));
+  else if(a==="domdelworkout"){const[sn,wid]=v.split("|");domDeleteWorkout(sn,parseInt(wid));}
+  else if(a==="domtoggleapproval")persistDom({...state.dom,requireApproval:!state.dom.requireApproval});
+});
+
+// Text-Inputs: nur state schreiben, KEIN render() -> kein Fokus-Verlust
+document.addEventListener("input",e=>{
+  const t=e.target,b=t.dataset.bind;
+  if(!b)return;
+  const map={lname:"lName",lpass:"lPass",wdur:"wDur",wnote:"wNote",
+             adjamt:"adjAmt",domsub:"domSub",winday:"winDay",
+             winfrom:"winFrom",winto:"winTo"};
+  if(map[b]){state[map[b]]=t.value;return;}
+  if(b==="screenshot"){
+    const file=t.files&&t.files[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      state.wScreenshot=ev.target.result;
+      const wrap=document.querySelector(".screenshot-upload");
+      if(wrap){
+        wrap.classList.add("has-img");
+        const img=document.createElement("img");
+        img.src=ev.target.result;
+        img.className="screenshot-preview";
+        img.alt="Screenshot";
+        const inp=document.createElement("input");
+        inp.type="file";inp.accept="image/*";inp.dataset.bind="screenshot";
+        inp.style.cssText="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%";
+        wrap.innerHTML="";
+        wrap.appendChild(inp);
+        wrap.appendChild(img);
+      }
+      const saveBtn=document.querySelector("[data-action='addworkout']");
+      if(saveBtn)saveBtn.disabled=false;
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+document.addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&e.target.dataset.bind==="lpass")doLogin(false);
+});
+
+// ── BUILD HTML ──────────────────────────────────────────────────
+function buildApp(){
+  const {me,sub,dom,tab,toast,lMode,lName,lPass,wDur,wHi,wNote,wScreenshot,domSub,adjAmt,winDay,winFrom,winTo}=state;
+
+  const toastHtml=toast?`<div class="toast ${toast.type}">${toast.msg}</div>`:"";
+
+  // LOGIN
+  if(!me){
+    return`<div class="app"><div class="page"><div class="login-wrap">
+      <div>
+        <div class="display" style="font-size:28px;text-align:center">FreedomFit</div>
+        <p style="font-size:11px;letter-spacing:4px;color:var(--muted2);text-align:center;margin-top:6px">Discipline · Reward · Freedom</p>
+      </div>
+      <div class="card">
+        <div class="tabs">
+          <button class="tab ${lMode==="sub"?"on":""}" data-action="lmode" data-val="sub">💜 Sportler</button>
+          <button class="tab dom ${lMode==="dom"?"on dom":""}" data-action="lmode" data-val="dom">🖤 Trainer</button>
+        </div>
+        <div class="field-wrap">
+          <span class="label">Benutzername</span>
+          <input class="field" data-bind="lname" value="${escHtml(lName)}" placeholder="Name"/>
+        </div>
+        <div class="field-wrap">
+          <span class="label">Passwort</span>
+          <input class="field" type="password" data-bind="lpass" value="${escHtml(lPass)}" placeholder="••••••••"/>
+        </div>
+        <button class="btn ${lMode==="dom"?"btn-rose":"btn-acc"}" data-action="login">Einloggen</button>
+        <button class="btn btn-ghost" style="margin-top:8px" data-action="register">Neuen Account erstellen</button>
+      </div>
+    </div></div>${toastHtml}</div>`;
+  }
+
+  // DOM DASHBOARD
+  if(me.role==="dom"){
+    const allSubs=state.users.filter(u=>u.role==="sub").map(u=>u.name);
+    return`<div class="app"><div class="page">
+      <div class="dom-hdr">
+        <div class="dom-title">Trainer-Bereich</div>
+        <div class="dom-sub">Dein persönlicher Coach 💪</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+          <div class="pill"><div class="dot dot-dom"></div>${escHtml(me.name)}</div>
+          <button class="icon-btn" data-action="logout">Abmelden</button>
+        </div>
+      </div>
+      <div style="padding:14px 20px 0">
+        <div class="tabs">
+          <button class="tab dom ${tab==="dom"?"on dom":""}" data-action="tab" data-val="dom">👑 Sportler</button>
+          <button class="tab dom ${tab==="settings"?"on dom":""}" data-action="tab" data-val="settings">⚙️ Regeln</button>
+        </div>
+      </div>
+      ${tab==="dom"?buildDomSubs(allSubs):buildDomSettings()}
+    </div>${toastHtml}</div>`;
+  }
+
+  // SUB DASHBOARD
+  const ld=getLinkedDomState();
+  const redeemOkDay=canRedeemDay();
+  const winActive=ld?activeWindow(ld.windows):null;
+  const pct=sub.weeklyMax>0?Math.min((sub.freedomMins/sub.weeklyMax)*100,100):0;
+
+  return`<div class="app"><div class="page">
+    <div class="hdr">
+      <div class="hdr-title">FreedomFit</div>
+      <div class="hdr-right">
+        <div class="pill"><div class="dot dot-sub"></div>${escHtml(me.name)}${sub.domLinked?`<span style="font-size:10px;color:var(--rose);margin-left:4px">🖤${escHtml(sub.domLinked)}</span>`:""}</div>
+        <button class="icon-btn" data-action="logout">✕</button>
+      </div>
+    </div>
+    ${tab==="home"?buildSubHome(pct,winActive,sub):""}
+    ${tab==="train"?buildSubTrain(wDur,wHi,wNote,wScreenshot,sub):""}
+    ${tab==="redeem"?buildSubRedeem(sub,ld,redeemOkDay):""}
+    ${tab==="history"?buildSubHistory(sub):""}
+    <nav class="nav">
+      ${[{id:"home",icon:"🏠",label:"Home"},{id:"train",icon:"🏋️",label:"Training"},{id:"redeem",icon:"🔓",label:"Einlösen"},{id:"history",icon:"📋",label:"Verlauf"}].map(n=>`<button class="nav-btn ${tab===n.id?"on":""}" data-action="tab" data-val="${n.id}"><span class="nav-icon">${n.icon}</span><span class="nav-lbl">${n.label}</span></button>`).join("")}
+    </nav>
+  </div>${toastHtml}</div>`;
+}
+
+function buildSubHome(pct,winActive,sub){
+  // Auto-trigger sync check if fitbit connected and not synced today
+  if(state.fitbitToken && !state.fitbitSyncing){
+    const lastSync = state.fitbitLastSync;
+    const today = todayISO();
+    if(!lastSync || !lastSync.startsWith(today)){
+      setTimeout(()=>syncFitbit(), 500);
+    }
+  }
+
+  return`<div class="sec">
+    <div class="label" style="margin-bottom:10px">Deine Freiheit</div>
+    <div class="meter-card">
+      <div style="font-size:11px;letter-spacing:2px;color:var(--muted2);margin-bottom:6px">FREIHEITSMINUTEN</div>
+      <div class="meter-big">${fmtMin(sub.freedomMins)}</div>
+      <div class="meter-sub">von ${fmtMin(sub.weeklyMax)} diese Woche</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+      <div class="bar-labels"><span>0</span><span>${sub.weeklyMax}m max</span></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-val">${sub.trainStreak||0}</div><div class="stat-lbl">🔥 Trainings-Streak</div></div>
+      <div class="stat-card"><div class="stat-val">${sub.savingStreak||0}</div><div class="stat-lbl">💰 Spar-Streak</div></div>
+    </div>
+  </div>
+  <div class="sec" style="padding-top:0">
+    ${sub.missedDays>0?`<div class="alert alert-warn"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${sub.missedDays} Tag(e) ohne Training!</strong><br>${sub.missedDays===1?"Morgen: −30%":sub.missedDays===2?"Morgen: −50%!":"Nächste Stufe: Auf 0!"}</div></div>`:""}
+    ${sub.savedThisWeek?`<div class="alert alert-gold"><div class="alert-icon">💰</div><div class="alert-body">Diese Woche gespart – Einlösen bis Sonntag gesperrt.</div></div>`:""}
+    ${winActive?`<div class="alert alert-green"><div class="alert-icon">🟢</div><div class="alert-body"><strong>Freiheitsfenster aktiv!</strong> Bis ${winActive.to} Uhr<br><button class="btn btn-acc btn-sm" style="margin-top:8px" data-action="redeemwin">Jetzt einlösen</button></div></div>`:""}
+    ${sub.pendingRedeem?`<div class="alert alert-acc"><div class="alert-icon">⏳</div><div class="alert-body">Einlösung wartet auf Trainer-Bestätigung…</div></div>`:""}
+    ${!sub.domLinked?`<div class="alert alert-acc"><div class="alert-icon">🔗</div><div class="alert-body">Noch kein Trainer verknüpft.</div></div>`:""}
+  </div>
+  ${(sub.workouts||[]).filter(w=>w.date===todayISO()).length>0?`<div class="sec" style="padding-top:0"><div class="label" style="margin-bottom:8px">Heute</div>${(sub.workouts||[]).filter(w=>w.date===todayISO()).map(w=>`<div class="wo-item"><div class="wo-left"><div class="wo-name">${w.duration}min ${w.high?`<span class="hi-chip">HIGH</span>`:""}</div>${w.note?`<div class="wo-date">${escHtml(w.note)}</div>`:""}</div><div class="wo-earned">+${fmtMin(w.earned)}</div></div>`).join("")}</div>`:""}`;
+}
+
+function buildSubTrain(wDur,wHi,wNote,wScreenshot,sub){
+  const reward=wDur&&parseFloat(wDur)>0?calcReward(parseFloat(wDur),wHi):null;
+  return`<div class="sec">
+    <div class="label" style="margin-bottom:10px">Training eintragen</div>
+    ${state.fitbitToken ? buildFitbitSync() : buildFitbitConnect()}
+    <div class="wform">
+      <div class="field-wrap"><span class="label">Dauer (Minuten)</span><input class="field" type="number" data-bind="wdur" value="${escHtml(wDur)}" placeholder="30"/></div>
+      <div><span class="label" style="display:block;margin-bottom:6px">Intensität</span>
+        <div class="intensity-row">
+          <button class="int-btn ${wHi?"on-hi":""}" data-action="whi" data-val="1">🔥 Intensiv &gt;132 BPM</button>
+          <button class="int-btn ${!wHi?"on-lo":""}" data-action="whi" data-val="0">🚶 Moderat</button>
+        </div>
+      </div>
+      <div class="field-wrap"><span class="label">Notiz (optional)</span><input class="field" data-bind="wnote" value="${escHtml(wNote)}" placeholder="Laufen, Kraft…"/></div>
+      <div>
+        <span class="label" style="display:block;margin-bottom:6px">Screenshot Beweis <span style="color:var(--red)">*</span></span>
+        <label class="screenshot-upload ${wScreenshot?"has-img":""}">
+          <input type="file" accept="image/*" data-bind="screenshot"/>
+          ${wScreenshot?`<img src="${wScreenshot}" class="screenshot-preview" alt="Screenshot"/>`:
+            `<div style="padding:16px 0"><div class="screenshot-icon">📷</div><div class="screenshot-label">Tippe um Screenshot hochzuladen</div><div class="screenshot-required">Pflichtfeld</div></div>`}
+        </label>
+        ${wScreenshot?`<button class="btn btn-danger btn-sm" style="margin-top:6px" data-action="clearshot">Screenshot entfernen</button>`:""}
+      </div>
+      ${reward!==null?`<div class="reward-preview">Reward: +${fmtMin(reward)} Freiheit</div>`:""}
+      <button class="btn btn-acc" data-action="addworkout" ${!wScreenshot?"disabled":""}>Training speichern</button>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="label" style="margin-bottom:8px">Punkteregeln</div>
+      <div style="font-size:12px;color:var(--muted2);line-height:1.9">
+        🔥 <strong style="color:var(--text)">Intensiv (&gt;132 BPM):</strong> 1 Min / 15 Min Training<br/>
+        🚶 <strong style="color:var(--text)">Moderat:</strong> 15 Sek / 20 Min Training<br/>
+        ⚠️ <strong style="color:var(--text)">Mindest-Training:</strong> 10 Min stoppt Strafe<br/>
+        📅 <strong style="color:var(--text)">Wöchentl. Max:</strong> ${sub.weeklyMax} Min
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildSubRedeem(sub,ld,redeemOkDay){
+  return`<div class="sec">
+    <div class="label" style="margin-bottom:10px">Einlösen & Sparen</div>
+    <div class="redeem-card" style="margin-bottom:14px">
+      <div style="font-size:11px;letter-spacing:2px;color:var(--muted2)">VERFÜGBAR</div>
+      <div class="redeem-big">${fmtMin(sub.freedomMins)}</div>
+      ${ld?.redeemDays?.length>0?`<div><div class="label" style="margin-bottom:6px">Einlösen erlaubt an</div><div class="days-grid">${DAYS_DE.map((d,i)=>`<div class="day-chip ${ld.redeemDays.includes(i)?"active":""} ${i===todayDayIndex()?"today":""}">${d}</div>`).join("")}</div></div>`:""}
+      ${sub.savedThisWeek?`<div class="alert alert-gold" style="text-align:left"><div class="alert-icon">🔒</div><div class="alert-body">Diese Woche gespart – Einlösen gesperrt.</div></div>`:
+        `<button class="btn btn-acc" data-action="redeem" ${(!redeemOkDay||sub.freedomMins<=0||sub.pendingRedeem)?"disabled":""}>
+          ${!redeemOkDay?"Heute kein Einlösen erlaubt":sub.pendingRedeem?"⏳ Warte auf Bestätigung":ld?.requireApproval?"Einlösung anfragen 🔐":"Jetzt einlösen 🎉"}
+        </button>`}
+    </div>
+    <div class="card">
+      <div class="label" style="margin-bottom:6px">Diese Woche sparen</div>
+      <div style="font-size:12px;color:var(--muted2);line-height:1.7;margin-bottom:12px">
+        Minuten nicht einlösen → nächste Woche +2 Max-Minuten (bis 15 Min).<br/>
+        Mindestens <strong style="color:var(--text)">5 Min</strong> diese Woche verdient.
+        Diese Woche: <strong style="color:var(--acc)">${fmtMin(sub.weekEarned||0)}</strong>
+      </div>
+      <div class="alert alert-gold" style="margin-bottom:12px"><div class="alert-icon">💰</div><div class="alert-body">Spar-Streak: <strong>${sub.savingStreak||0}</strong> Woche(n) → nächste Woche max. <strong>${Math.min(BASE_MAX+((sub.savingStreak||0)+1)*STREAK_BONUS,MAX_CAP)}min</strong></div></div>
+      <button class="btn btn-ghost" data-action="saveweek" ${(sub.savedThisWeek||(sub.weekEarned||0)<MIN_EARN_SAVE)?"disabled":""}>
+        ${sub.savedThisWeek?"✓ Bereits gespart diese Woche":"💰 Diese Woche sparen"}
+      </button>
+    </div>
+  </div>`;
+}
+
+function buildSubHistory(sub){
+  return`<div class="sec">
+    <div class="label" style="margin-bottom:10px">Trainingshistorie</div>
+    ${(sub.workouts||[]).length===0?`<div class="empty">Noch keine Trainings.<br/>Fang heute an! 💪</div>`:
+      (sub.workouts||[]).map(w=>`
+        <div class="wo-item expanded">
+          <div class="wo-item-top">
+            <div class="wo-left">
+              <div class="wo-date">${fmtDate(w.date)}</div>
+              <div class="wo-name">${w.duration}min ${w.high?`<span class="hi-chip">HIGH</span>`:""}</div>
+              ${w.note?`<div class="wo-date">${escHtml(w.note)}</div>`:""}
+            </div>
+            <div class="wo-earned">+${fmtMin(w.earned)}</div>
+          </div>
+          ${w.screenshot?`<img src="${w.screenshot}" class="wo-screenshot" alt="Beweis"/>` :
+            w.verified ? `<div style="font-size:11px;color:var(--green);margin-top:4px">✓ Google Health verifiziert · ⌚ ${w.avgHR||"?"} BPM avg</div>` : ""}
+        </div>`).join("")}
+  </div>`;
+}
+
+function buildDomSubs(allSubs){
+  const {domSub,adjAmt}=state;
+  return`<div class="sec">
+    <div class="label" style="margin-bottom:8px">Sportler verknüpfen</div>
+    <div class="row" style="margin-bottom:16px">
+      <div class="field-wrap">
+        <select class="field" data-bind="domsub">
+          <option value="">— Sportler wählen —</option>
+          ${allSubs.map(s=>`<option value="${s}" ${domSub===s?"selected":""}>${s}</option>`).join("")}
+        </select>
+      </div>
+      <button class="btn btn-rose btn-sm" data-action="domlink">Verknüpfen</button>
+    </div>
+    ${state.dom.linkedSubs.map(sn=>{
+      const ss=getLinkedSubState(sn);
+      return`<div style="margin-bottom:18px">
+        <div class="label" style="margin-bottom:8px">${escHtml(sn)}</div>
+        <div class="dom-grid">
+          <div class="dom-stat"><div class="dom-stat-val">${fmtMin(ss.freedomMins||0)}</div><div class="dom-stat-lbl">Freiheit</div></div>
+          <div class="dom-stat"><div class="dom-stat-val">${ss.trainStreak||0}🔥</div><div class="dom-stat-lbl">Streak</div></div>
+        </div>
+        ${ss.pendingRedeem?`<div class="alert alert-gold" style="margin-bottom:10px"><div class="alert-icon">🔔</div><div class="alert-body"><strong>Einlösung: ${fmtMin(ss.pendingRedeem.mins)}</strong><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-acc btn-sm" data-action="domapprove" data-val="${sn}">✓ Genehmigen</button><button class="btn btn-danger btn-sm" data-action="domdeny" data-val="${sn}">✗ Ablehnen</button></div></div></div>`:""}
+        <div class="row" style="margin-bottom:8px">
+          <div class="field-wrap"><input class="field" type="number" data-bind="adjamt" value="${escHtml(adjAmt)}" placeholder="Minuten"/></div>
+          <button class="btn btn-acc btn-sm" data-action="domadj-plus">+</button>
+          <button class="btn btn-danger btn-sm" data-action="domadj-minus">−</button>
+        </div>
+        <button class="btn btn-danger" style="width:100%;margin-bottom:10px" data-action="domreset">Auf 0 zurücksetzen</button>
+        ${(ss.workouts||[]).length>0?`<div class="label" style="margin-bottom:6px">Trainings prüfen & löschen</div>
+          ${(ss.workouts||[]).slice(0,6).map(w=>`
+            <div class="wo-item expanded" style="margin-bottom:10px">
+              <div class="wo-item-top">
+                <div class="wo-left">
+                  <div class="wo-date">${fmtDate(w.date)}</div>
+                  <div class="wo-name">${w.duration}min ${w.high?"🔥":"🚶"}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div class="wo-earned">${fmtMin(w.earned)}</div>
+                  <button class="btn btn-danger btn-sm" data-action="domdelworkout" data-val="${sn}|${w.id}">✗ Löschen</button>
+                </div>
+              </div>
+              ${w.screenshot?`<img src="${w.screenshot}" class="wo-screenshot" alt="Beweis"/>`:
+                `<div style="font-size:11px;color:var(--red);margin-top:6px">⚠️ Kein Screenshot</div>`}
+            </div>`).join("")}`:""}
+        <div class="divider" style="margin-top:14px"></div>
+      </div>`;
+    }).join("")}
+    ${state.dom.linkedSubs.length===0?`<div class="empty">Noch keine Sportler verknüpft.</div>`:""}
+  </div>`;
+}
+
+function buildDomSettings(){
+  const {dom,winDay,winFrom,winTo}=state;
+  return`<div class="sec">
+    <div class="label" style="margin-bottom:8px">Bestätigung & Tage</div>
+    <div class="toggle-row">
+      <div class="toggle-label">Trainer-Bestätigung erforderlich</div>
+      <div class="toggle-switch" style="background:${dom.requireApproval?"var(--rose)":"var(--s3)"}" data-action="domtoggleapproval">
+        <div class="toggle-thumb" style="left:${dom.requireApproval?22:2}px"></div>
+      </div>
+    </div>
+    <div class="label" style="margin-bottom:8px;margin-top:16px">Einlösen erlaubt an</div>
+    <div class="wday-grid" style="margin-bottom:6px">
+      ${DAYS_DE.map((d,i)=>`<button class="wday-btn ${dom.redeemDays.includes(i)?"on":""}" data-action="domtoggleday" data-val="${i}">${d}</button>`).join("")}
+    </div>
+    <div style="font-size:11px;color:var(--muted2);margin-bottom:16px">Kein Tag aktiv → immer erlaubt</div>
+    <div class="label" style="margin-bottom:8px">Freiheitsfenster</div>
+    ${dom.windows.map(w=>`<div class="window-row"><div><div class="window-info">${DAYS_FULL[w.day]}</div><div class="window-time">${w.from} – ${w.to} Uhr</div></div><button class="btn btn-danger btn-sm" data-action="domremovewin" data-val="${w.id}">✗</button></div>`).join("")}
+    <div class="wform" style="margin-top:8px">
+      <div class="field-wrap"><span class="label">Tag</span><select class="field" data-bind="winday">${DAYS_FULL.map((d,i)=>`<option value="${i}" ${winDay==i?"selected":""}>${d}</option>`).join("")}</select></div>
+      <div class="row">
+        <div class="field-wrap"><span class="label">Von</span><input class="field" type="time" data-bind="winfrom" value="${winFrom}"/></div>
+        <div class="field-wrap"><span class="label">Bis</span><input class="field" type="time" data-bind="winto" value="${winTo}"/></div>
+      </div>
+      <button class="btn btn-rose" data-action="domaddwin">Fenster hinzufügen</button>
+    </div>
+  </div>`;
+}
+
+// ── GOOGLE HEALTH OAUTH ─────────────────────────────────────────
+function fitbitLogin(){
+  // PKCE flow with Google OAuth
+  const verifier = generateVerifier();
+  sessionStorage.setItem("ff_pkce_verifier", verifier);
+  generateChallenge(verifier).then(challenge => {
+    const params = new URLSearchParams({
+      response_type:"code",
+      client_id:GOOGLE_CLIENT_ID,
+      redirect_uri:GOOGLE_REDIRECT,
+      scope:GOOGLE_SCOPE,
+      code_challenge:challenge,
+      code_challenge_method:"S256",
+      access_type:"offline",
+      prompt:"consent",
+      state:"google_health_auth"
+    });
+    window.location.href = GOOGLE_AUTH_URL + "?" + params.toString();
+  });
+}
+
+function generateVerifier(){
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
+}
+
+async function generateChallenge(verifier){
+  const data = new TextEncoder().encode(verifier);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
+}
+
+async function handleFitbitCallback(){
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  const authState = params.get("state");
+  if(!code || authState !== "google_health_auth") return;
+
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  const verifier = sessionStorage.getItem("ff_pkce_verifier");
+  if(!verifier){ showToast("Auth Fehler – bitte nochmal versuchen","danger"); return; }
+
+  try {
+    const resp = await fetch(GOOGLE_TOKEN_URL, {
+      method:"POST",
+      headers:{"Content-Type":"application/x-www-form-urlencoded"},
+      body: new URLSearchParams({
+        grant_type:"authorization_code",
+        client_id:GOOGLE_CLIENT_ID,
+        code:code,
+        redirect_uri:GOOGLE_REDIRECT,
+        code_verifier:verifier
+      })
+    });
+    const data = await resp.json();
+    if(data.access_token){
+      const token = {
+        access:data.access_token,
+        refresh:data.refresh_token,
+        expires: Date.now() + (data.expires_in * 1000)
+      };
+      save("fitbit_token", token);
+      setState({fitbitToken:token});
+      showToast("Google Health verbunden! Synchronisiere… 🎉","ok");
+      syncFitbit();
+    } else {
+      showToast("Auth fehlgeschlagen: " + (data.error || "Unbekannter Fehler"),"danger");
+      console.error(data);
+    }
+  } catch(e){
+    showToast("Verbindungsfehler","danger");
+    console.error(e);
+  }
+}
+
+async function refreshFitbitToken(){
+  const token = state.fitbitToken || load("fitbit_token",null);
+  if(!token?.refresh) return null;
+  try {
+    const resp = await fetch(GOOGLE_TOKEN_URL, {
+      method:"POST",
+      headers:{"Content-Type":"application/x-www-form-urlencoded"},
+      body: new URLSearchParams({
+        grant_type:"refresh_token",
+        client_id:GOOGLE_CLIENT_ID,
+        refresh_token:token.refresh
+      })
+    });
+    const data = await resp.json();
+    if(data.access_token){
+      const newToken = {
+        access:data.access_token,
+        refresh:token.refresh, // Google sometimes doesn't return new refresh token
+        expires:Date.now()+(data.expires_in*1000)
+      };
+      save("fitbit_token", newToken);
+      setState({fitbitToken:newToken});
+      return newToken;
+    }
+  } catch(e){ console.error("Token refresh failed",e); }
+  return null;
+}
+
+async function getValidToken(){
+  let token = state.fitbitToken || load("fitbit_token",null);
+  if(!token) return null;
+  if(Date.now() > token.expires - 60000){
+    token = await refreshFitbitToken();
+  }
+  return token;
+}
+
+async function syncFitbit(){
+  setState({fitbitSyncing:true, fitbitError:null});
+  const token = await getValidToken();
+  if(!token){ setState({fitbitSyncing:false, fitbitError:"Nicht verbunden"}); return; }
+
+  try {
+    // Google Health API v4 – fetch exercise sessions from last 7 days
+    const now = new Date();
+    const weekAgo = new Date(now - 7*24*60*60*1000);
+
+    const resp = await fetch(
+      `${GOOGLE_API_BASE}/dataTypes/exercise/dataPoints?` + new URLSearchParams({
+        startTime: weekAgo.toISOString(),
+        endTime: now.toISOString(),
+        limit: "20"
+      }),
+      { headers:{ Authorization:`Bearer ${token.access}` } }
+    );
+
+    if(!resp.ok){
+      const err = await resp.json();
+      console.error("Google Health API error:", err);
+      setState({fitbitSyncing:false, fitbitError:`API Fehler: ${resp.status}`});
+      showToast("Sync fehlgeschlagen – API Fehler","danger");
+      return;
+    }
+
+    const data = await resp.json();
+    const dataPoints = data.dataPoints || [];
+
+    const existing = new Set(
+      (state.sub.workouts||[]).filter(w=>w.fitbitId).map(w=>w.fitbitId)
+    );
+    const newWorkouts = [];
+
+    for(const dp of dataPoints){
+      const dpId = dp.startTime + "_" + (dp.value?.activityType || "workout");
+      if(existing.has(dpId)) continue;
+
+      const startMs = new Date(dp.startTime).getTime();
+      const endMs   = new Date(dp.endTime).getTime();
+      const durMins = (endMs - startMs) / 60000;
+      if(durMins < 5) continue;
+
+      // Fetch heart rate for this session
+      const avgHR = await fetchAvgHR(token.access, dp.startTime, dp.endTime);
+
+      const isHigh = avgHR > 132;
+      const earned = isHigh
+        ? Math.floor(durMins / HIGH_BPM_MINS) * HIGH_REWARD
+        : Math.floor(durMins / LOW_BPM_MINS)  * LOW_REWARD;
+
+      const actName = dp.value?.activityType || "Training";
+
+      newWorkouts.push({
+        id: Date.now() + Math.random(),
+        fitbitId: dpId,
+        date: dp.startTime.slice(0,10),
+        duration: Math.round(durMins),
+        high: isHigh,
+        earned: earned,
+        note: actName,
+        manual: false,
+        verified: true,
+        avgHR: Math.round(avgHR),
+        screenshot: null
+      });
+    }
+
+    if(newWorkouts.length > 0){
+      let s = {...state.sub};
+      for(const wo of newWorkouts){
+        s.workouts = [wo, ...s.workouts];
+        if(wo.duration >= MIN_TRAIN) s.missedDays = 0;
+        s.weekEarned = (s.weekEarned||0) + wo.earned;
+        s.freedomMins = Math.min((s.freedomMins||0) + wo.earned, s.weeklyMax);
+        if(wo.date === todayISO() && s.lastTrained !== todayISO()){
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate()-1);
+          const yStr = yesterday.toISOString().slice(0,10);
+          s.trainStreak = s.lastTrained===yStr ? (s.trainStreak||0)+1 : 1;
+          s.lastTrained = todayISO();
+          s.lastPenalty = todayISO();
+        }
+      }
+      persistSub(s);
+      showToast(`${newWorkouts.length} Training(s) synchronisiert! 💜`,"ok");
+    } else {
+      showToast("Alles aktuell ✓","ok");
+    }
+
+    setState({fitbitSyncing:false, fitbitLastSync:new Date().toISOString()});
+
+  } catch(e){
+    console.error("Sync error:", e);
+    setState({fitbitSyncing:false, fitbitError:"Sync fehlgeschlagen"});
+    showToast("Sync fehlgeschlagen","danger");
+  }
+}
+
+async function fetchAvgHR(accessToken, startTime, endTime){
+  try {
+    const resp = await fetch(
+      `${GOOGLE_API_BASE}/dataTypes/heart-rate/dataPoints?` + new URLSearchParams({
+        startTime: startTime,
+        endTime:   endTime,
+        limit:     "1000"
+      }),
+      { headers:{ Authorization:`Bearer ${accessToken}` } }
+    );
+    const data = await resp.json();
+    const pts = data.dataPoints || [];
+    if(pts.length === 0) return 0;
+    const sum = pts.reduce((s,p) => s + (p.value?.bpm || p.value?.beatsPerMinute || 0), 0);
+    return sum / pts.length;
+  } catch(e){ return 0; }
+}
+
+function fitbitDisconnect(){
+  save("fitbit_token", null);
+  setState({fitbitToken:null, fitbitLastSync:null});
+  showToast("Google Health getrennt");
+}
+
+function saveFitbitClientId(){
+  // Client ID ist jetzt fest eingebaut - nicht mehr nötig
+  showToast("Client ID ist bereits konfiguriert ✓","ok");
+}
+
+
+function buildFitbitConnect(){
+  return `<div class="card" style="margin-bottom:14px">
+    <div style="text-align:center;padding:8px 0 14px">
+      <div style="font-size:28px;margin-bottom:8px">⌚</div>
+      <div style="font-family:'Cinzel Decorative',serif;font-size:14px;color:var(--acc);margin-bottom:6px">Google Health verbinden</div>
+      <div style="font-size:12px;color:var(--muted2);line-height:1.7;margin-bottom:16px">
+        Verbinde dein Fitbit Air um Trainings automatisch zu synchronisieren.<br/>
+        <strong style="color:var(--text)">Kein Screenshot mehr nötig!</strong>
+      </div>
+      <button class="btn btn-acc" data-action="fitbit-login">Mit Google Health verbinden 🔗</button>
+    </div>
+  </div>
+  <div class="alert alert-acc" style="margin-bottom:14px"><div class="alert-icon">📸</div><div class="alert-body"><strong>Bis Google Health verbunden ist:</strong><br/>Screenshot als Beweis erforderlich. Danach entfällt das automatisch.</div></div>`;
+}
+
+function buildFitbitSync(){
+  const {fitbitSyncing, fitbitLastSync, fitbitError} = state;
+  const lastSync = fitbitLastSync ? new Date(fitbitLastSync).toLocaleString("de-DE",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "Noch nie";
+  return `<div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--green)">✓ Google Health verbunden</div>
+        <div style="font-size:11px;color:var(--muted2);margin-top:2px">Letzter Sync: ${lastSync}</div>
+        ${fitbitError ? `<div style="font-size:11px;color:var(--red);margin-top:2px">⚠️ ${fitbitError}</div>` : ""}
+      </div>
+      <button class="btn btn-danger btn-sm" data-action="fitbit-disconnect">Trennen</button>
+    </div>
+    <button class="btn btn-acc" data-action="fitbit-sync" ${fitbitSyncing?"disabled":""}>
+      ${fitbitSyncing ? "⏳ Synchronisiere…" : "🔄 Jetzt synchronisieren"}
+    </button>
+  </div>`;
+}
+
+function escHtml(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+// ── INIT ────────────────────────────────────────────────────────
+// Load saved fitbit token
+const savedToken = load("fitbit_token", null);
+if(savedToken && savedToken.access) state.fitbitToken = savedToken;
+
+// Handle Fitbit OAuth callback
+handleFitbitCallback().then(()=>render());
+
+</script>
+</body>
+</html>
