@@ -178,8 +178,10 @@ const DAYS_DE=["Mo","Di","Mi","Do","Fr","Sa","So"];
 const DAYS_FULL=["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 
 // ── GOOGLE HEALTH API CONFIG ───────────────────────────────────
-const GOOGLE_CLIENT_ID  = "143418453456-8nhj2c7gcrprqn6gd6lgmfj8mo9pst93.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID     = "143418453456-hjbf56g190eip5f42n78ij745duc85ka.apps.googleusercontent.com";
+const GOOGLE_CLIENT_SECRET = "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";
 const GOOGLE_REDIRECT   = window.location.href.split("?")[0].split("#")[0];
+// Desktop app type - no client_secret needed
 const GOOGLE_SCOPE      = "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly";
 const GOOGLE_AUTH_URL   = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL  = "https://oauth2.googleapis.com/token";
@@ -791,6 +793,7 @@ async function handleFitbitCallback(){
       body: new URLSearchParams({
         grant_type:"authorization_code",
         client_id:GOOGLE_CLIENT_ID,
+        client_secret:GOOGLE_CLIENT_SECRET,
         code:code,
         redirect_uri:GOOGLE_REDIRECT,
         code_verifier:verifier
@@ -827,6 +830,7 @@ async function refreshFitbitToken(){
       body: new URLSearchParams({
         grant_type:"refresh_token",
         client_id:GOOGLE_CLIENT_ID,
+        client_secret:GOOGLE_CLIENT_SECRET,
         refresh_token:token.refresh
       })
     });
