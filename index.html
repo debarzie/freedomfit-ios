@@ -409,14 +409,23 @@ function domAddWindow(){
 function domRemoveWindow(id){persistDom({...state.dom,windows:state.dom.windows.filter(w=>w.id!==id)});}
 function domDeleteWorkout(subName,woId){
   const s=load(`sub_${subName}`,mkSub());
-  // Compare as strings AND numbers to handle float IDs
-  const removed=s.workouts.find(w=>String(w.id)===String(woId)||w.id===Number(woId));
-  if(!removed){ showToast("Training nicht gefunden","danger"); render(); return; }
-  const newWorkouts=s.workouts.filter(w=>String(w.id)!==String(woId)&&w.id!==Number(woId));
-  const newMins=Math.max(0,(s.freedomMins||0)-(removed.earned||0));
-  const newWeekEarned=Math.max(0,(s.weekEarned||0)-(removed.earned||0));
-  save(`sub_${subName}`,{...s,workouts:newWorkouts,freedomMins:newMins,weekEarned:newWeekEarned});
-  showToast("Training gelöscht ✓","ok");
+  const wo=s.workouts.find(w=>String(w.id)===String(woId)||w.id===Number(woId));
+  if(!wo){ showToast("Training nicht gefunden","danger"); render(); return; }
+  // Mark as invalid instead of deleting – prevents re-sync from restoring it
+  const newWorkouts=s.workouts.map(w=>
+    (String(w.id)===String(woId)||w.id===Number(woId))
+      ? {...w, invalid:true, earned:0}
+      : w
+  );
+  // Subtract earned minutes
+  const newMins=Math.max(0,(s.freedomMins||0)-(wo.earned||0));
+  const newWeekEarned=Math.max(0,(s.weekEarned||0)-(wo.earned||0));
+  // Also save fitbitId to a blocklist so sync never re-adds it
+  const blocklist=[...(s.fitbitBlocklist||[])];
+  if(wo.fitbitId) blocklist.push(wo.fitbitId);
+  save(`sub_${subName}`,{...s,workouts:newWorkouts,freedomMins:newMins,
+       weekEarned:newWeekEarned,fitbitBlocklist:blocklist});
+  showToast("Training ungültig markiert ✓","ok");
   render();
 }
 
@@ -685,7 +694,7 @@ function buildSubHistory(sub){
   return`<div class="sec">
     <div class="label" style="margin-bottom:10px">Trainingshistorie</div>
     ${(sub.workouts||[]).length===0?`<div class="empty">Noch keine Trainings.<br/>Fang heute an! 💪</div>`:
-      (sub.workouts||[]).map(w=>`
+      (sub.workouts||[]).filter(w=>!w.invalid).map(w=>`
         <div class="wo-item expanded">
           <div class="wo-item-top">
             <div class="wo-left">
@@ -729,21 +738,26 @@ function buildDomSubs(allSubs){
           <button class="btn btn-danger btn-sm" data-action="domadj-minus">−</button>
         </div>
         <button class="btn btn-danger" style="width:100%;margin-bottom:10px" data-action="domreset">Auf 0 zurücksetzen</button>
-        ${(ss.workouts||[]).length>0?`<div class="label" style="margin-bottom:6px">Trainings prüfen & löschen</div>
-          ${(ss.workouts||[]).slice(0,6).map(w=>`
-            <div class="wo-item expanded" style="margin-bottom:10px">
+        ${(ss.workouts||[]).length>0?`<div class="label" style="margin-bottom:6px">Trainings prüfen & ungültig markieren</div>
+          ${(ss.workouts||[]).slice(0,8).map(w=>`
+            <div class="wo-item expanded" style="margin-bottom:10px;${w.invalid?"opacity:.45;":""}">
               <div class="wo-item-top">
                 <div class="wo-left">
                   <div class="wo-date">${fmtDate(w.date)}</div>
-                  <div class="wo-name">${w.duration}min ${w.high?"🔥":"🚶"}</div>
+                  <div class="wo-name" style="${w.invalid?"text-decoration:line-through;color:var(--red)":""}">
+                    ${w.duration}min ${w.high?"🔥":"🚶"}
+                    ${w.invalid?` <span style="font-size:10px;color:var(--red);letter-spacing:1px">UNGÜLTIG</span>`:""}
+                  </div>
+                  ${w.verified?`<div style="font-size:11px;color:var(--green);margin-top:2px">✓ Fitbit · ⌚ ${w.avgHR||"?"}bpm</div>`:""}
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
-                  <div class="wo-earned">${fmtMin(w.earned)}</div>
-                  <button class="btn btn-danger btn-sm" data-action="domdelworkout" data-val="${escHtml(sn+'|'+String(w.id))}">✗ Löschen</button>
+                  ${!w.invalid?`
+                    <div class="wo-earned">${fmtMin(w.earned)}</div>
+                    <button class="btn btn-danger btn-sm" data-action="domdelworkout" data-val="${escHtml(sn+'|'+String(w.id))}">✗</button>
+                  `:`<span style="font-size:18px">🚫</span>`}
                 </div>
               </div>
-              ${w.screenshot?`<img src="${w.screenshot}" class="wo-screenshot" alt="Beweis"/>`:
-                `<div style="font-size:11px;color:var(--red);margin-top:6px">⚠️ Kein Screenshot</div>`}
+              ${w.screenshot?`<img src="${w.screenshot}" class="wo-screenshot" alt="Beweis"/>`:""}
             </div>`).join("")}`:""}
         <div class="divider" style="margin-top:14px"></div>
       </div>`;
@@ -929,9 +943,10 @@ async function syncFitbit(){
     console.log("API response:", JSON.stringify(data).slice(0,500));
     const dataPoints = data.dataPoints || [];
 
-    const existing = new Set(
-      (state.sub.workouts||[]).filter(w=>w.fitbitId).map(w=>w.fitbitId)
-    );
+    const existing = new Set([
+      ...(state.sub.workouts||[]).filter(w=>w.fitbitId).map(w=>w.fitbitId),
+      ...(state.sub.fitbitBlocklist||[]) // never re-add blocked workouts
+    ]);
     const newWorkouts = [];
 
     for(const dp of dataPoints){
